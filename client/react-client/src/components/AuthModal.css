@@ -1,0 +1,288 @@
+/* Overlay del modal */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Contenido del modal */
+.modal-content {
+  background: white;
+  border-radius: 12px;
+  padding: 40px;
+  width: 90%;
+  max-width: 450px;
+  position: relative;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Botón de cerrar */
+.modal-close {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: none;
+  border: none;
+  font-size: 32px;
+  color: #999;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s;
+}
+
+.modal-close:hover {
+  color: #333;
+}
+
+/* Título del modal */
+.modal-title {
+  text-align: center;
+  font-size: 28px;
+  margin: 0 0 30px 0;
+  color: #333;
+  font-weight: 600;
+}
+
+.brand-name {
+  color: #FF8C00;
+  font-weight: 700;
+}
+
+/* Tabs */
+.tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 30px;
+  border-bottom: 1px solid #e5e5e5;
+}
+
+.tab {
+  flex: 1;
+  padding: 12px 20px;
+  background: none;
+  border: none;
+  font-size: 15px;
+  font-weight: 500;
+  color: #666;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  border-bottom: 3px solid transparent;
+}
+
+.tab:hover {
+  color: #333;
+}
+
+.tab.active {
+  color: #333;
+  background: #f8f8f8;
+  border-bottom-color: #FF8C00;
+}
+
+/* Contenido de las tabs */
+.tab-content {
+  animation: fadeInContent 0.3s ease-out;
+}
+
+@keyframes fadeInContent {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Formulario */
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-group label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+}
+
+.form-group input {
+  padding: 12px 16px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 15px;
+  transition: all 0.2s;
+  background: #fafafa;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: #FF8C00;
+  background: white;
+  box-shadow: 0 0 0 3px rgba(255, 140, 0, 0.1);
+}
+
+.form-group input::placeholder {
+  color: #aaa;
+}
+
+.form-group input.input-error {
+  border-color: #e74c3c;
+  background: #fff5f5;
+}
+
+.error-text {
+  color: #e74c3c;
+  font-size: 13px;
+  margin-top: -4px;
+}
+
+/* Botón de submit */
+.submit-button {
+  padding: 14px;
+  background: #FF8C00;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 10px;
+}
+
+.submit-button:hover {
+  background: #E67E00;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(255, 140, 0, 0.3);
+}
+
+.submit-button:active {
+  transform: translateY(0);
+}
+
+/* Link de olvidaste contraseña */
+.forgot-password {
+  text-align: center;
+  color: #FF8C00;
+  font-size: 14px;
+  text-decoration: none;
+  font-weight: 500;
+  margin-top: 10px;
+  display: block;
+}
+
+.forgot-password:hover {
+  text-decoration: underline;
+}
+
+/* Sección de cuentas demo */
+.demo-section {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #e5e5e5;
+}
+
+.demo-title {
+  text-align: center;
+  color: #666;
+  font-size: 13px;
+  margin: 0 0 15px 0;
+}
+
+.admin-credentials {
+  background: #f8f8f8;
+  padding: 15px;
+  border-radius: 8px;
+  border-left: 3px solid #FF8C00;
+}
+
+.admin-credentials p {
+  margin: 8px 0;
+  font-size: 13px;
+  color: #555;
+  font-family: 'Courier New', monospace;
+}
+
+.admin-credentials strong {
+  color: #333;
+  font-weight: 600;
+}
+
+/* Texto de términos */
+.terms-text {
+  text-align: center;
+  font-size: 12px;
+  color: #666;
+  margin-top: 15px;
+  line-height: 1.5;
+}
+
+.terms-text a {
+  color: #FF8C00;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.terms-text a:hover {
+  text-decoration: underline;
+}
+
+/* Responsive */
+@media (max-width: 500px) {
+  .modal-content {
+    padding: 30px 20px;
+    width: 95%;
+  }
+
+  .modal-title {
+    font-size: 24px;
+  }
+
+  .tab {
+    font-size: 14px;
+    padding: 10px 15px;
+  }
+}
