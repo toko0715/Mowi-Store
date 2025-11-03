@@ -19,13 +19,16 @@ class UsuarioSerializer(serializers.ModelSerializer):
         exclude = ['password'] if 'password' in [f.name for f in Usuario._meta.fields] else '__all__'
 
 class PedidoSerializer(serializers.ModelSerializer):
-    usuario = UsuarioSerializer(read_only=True)
+    usuario_nombre = serializers.CharField(source='usuario.nombre', read_only=True)
+    usuario_email = serializers.CharField(source='usuario.email', read_only=True)
 
     class Meta:
         model = Pedido
         fields = '__all__'
 
 class DetallePedidoSerializer(serializers.ModelSerializer):
+    producto_nombre = serializers.CharField(source='producto.nombre', read_only=True)
+
     class Meta:
         model = DetallePedido
         fields = '__all__'

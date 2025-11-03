@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import { useToast } from '../context/ToastContext';
+import ConfirmModal from '../components/ConfirmModal';
+import useModal from '../hooks/useModal';
 
 function Productos() {
   const navigate = useNavigate();
@@ -9,6 +12,14 @@ function Productos() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
+  const [filtroPrecioMin, setFiltroPrecioMin] = useState('');
+  const [filtroPrecioMax, setFiltroPrecioMax] = useState('');
+  const [filtroStockMin, setFiltroStockMin] = useState('');
+  const [filtroStockMax, setFiltroStockMax] = useState('');
+  const [sortField, setSortField] = useState(null);
+  const [sortDirection, setSortDirection] = useState('asc');
+  const toast = useToast();
+  const confirmModal = useModal();
 
   useEffect(() => {
     fetchData();
@@ -33,15 +44,21 @@ function Productos() {
     navigate(`/productos/editar/${productoId}`);
   };
 
-  const handleDelete = async (productoId) => {
-    if (window.confirm('¿Está seguro de que desea eliminar este producto?')) {
-      try {
-        await api.deleteProducto(productoId);
-        fetchData(); 
-      } catch (error) {
-        console.error('Error deleting producto:', error);
-        alert('Error al eliminar el producto');
-      }
+  const handleDelete = (productoId) => {
+    confirmModal.open({ id: productoId });
+  };
+
+  const confirmDelete = async () => {
+    const productoId = confirmModal.data?.id;
+    if (!productoId) return;
+    
+    try {
+      await api.deleteProducto(productoId);
+      toast.success('Producto eliminado exitosamente');
+      fetchData(); 
+    } catch (error) {
+      console.error('Error deleting producto:', error);
+      toast.error('Error al eliminar el producto');
     }
   };
 
@@ -49,15 +66,67 @@ function Productos() {
     navigate('/productos/nuevo');
   };
 
-  const filteredProductos = productos.filter(producto => {
+  // Ordenar productos
+  const handleSort = (field) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  // Filtrar productos
+  let filteredProductos = productos.filter(producto => {
     const matchesSearch = producto.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (producto.descripcion?.toLowerCase() || '').includes(searchTerm.toLowerCase());
     const matchesCategory = !selectedCategory || 
       (producto.categoria && 
        (typeof producto.categoria === 'number' ? producto.categoria === parseInt(selectedCategory) :
         (typeof producto.categoria === 'object' && producto.categoria.id === parseInt(selectedCategory))));
-    return matchesSearch && matchesCategory;
+    
+    const precio = parseFloat(producto.precio || 0);
+    const matchesPrecioMin = !filtroPrecioMin || precio >= parseFloat(filtroPrecioMin);
+    const matchesPrecioMax = !filtroPrecioMax || precio <= parseFloat(filtroPrecioMax);
+    
+    const stock = producto.stock || 0;
+    const matchesStockMin = !filtroStockMin || stock >= parseInt(filtroStockMin);
+    const matchesStockMax = !filtroStockMax || stock <= parseInt(filtroStockMax);
+    
+    return matchesSearch && matchesCategory && matchesPrecioMin && matchesPrecioMax && matchesStockMin && matchesStockMax;
   });
+
+  // Ordenar
+  if (sortField) {
+    filteredProductos = [...filteredProductos].sort((a, b) => {
+      let aVal, bVal;
+      
+      switch (sortField) {
+        case 'nombre':
+          aVal = (a.nombre || '').toLowerCase();
+          bVal = (b.nombre || '').toLowerCase();
+          break;
+        case 'precio':
+          aVal = parseFloat(a.precio || 0);
+          bVal = parseFloat(b.precio || 0);
+          break;
+        case 'stock':
+          aVal = a.stock || 0;
+          bVal = b.stock || 0;
+          break;
+        case 'categoria':
+          aVal = (a.categoria_nombre || '').toLowerCase();
+          bVal = (b.categoria_nombre || '').toLowerCase();
+          break;
+        default:
+          return 0;
+      }
+      
+      if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }
 
   const getStatusBadge = (stock) => {
     if (stock < 10) {
@@ -128,53 +197,180 @@ function Productos() {
         </button>
       </div>
 
-      {/* Search and Filter */}
+      {/* Search and Filters */}
       <div style={{
         display: 'flex',
+        flexDirection: 'column',
         gap: '1rem',
         marginBottom: '2rem'
       }}>
-        <div style={{
-          flex: 1,
-          position: 'relative'
-        }}>
-          <input
-            type="text"
-            placeholder="Buscar productos..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+        <div style={{ display: 'flex', gap: '1rem' }}>
+          <div style={{
+            flex: 1,
+            position: 'relative'
+          }}>
+            <input
+              type="text"
+              placeholder="Buscar productos..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '0.75rem 1rem 0.75rem 2.5rem',
+                border: '1px solid #e2e8f0',
+                borderRadius: '8px',
+                fontSize: '1rem'
+              }}
+            />
+            <span style={{
+              position: 'absolute',
+              left: '0.75rem',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              fontSize: '1.25rem'
+            }}>🔍</span>
+          </div>
+          <select
+            value={selectedCategory}
+            onChange={(e) => setSelectedCategory(e.target.value)}
             style={{
-              width: '100%',
-              padding: '0.75rem 1rem 0.75rem 2.5rem',
+              padding: '0.75rem 1rem',
               border: '1px solid #e2e8f0',
               borderRadius: '8px',
-              fontSize: '1rem'
+              fontSize: '1rem',
+              minWidth: '200px'
             }}
-          />
-          <span style={{
-            position: 'absolute',
-            left: '0.75rem',
-            top: '50%',
-            transform: 'translateY(-50%)',
-            fontSize: '1.25rem'
-          }}>🔍</span>
+          >
+            <option value="">Todas las categorías</option>
+            {categorias.map(cat => (
+              <option key={cat.id} value={cat.id}>{cat.nombre}</option>
+            ))}
+          </select>
         </div>
-        <select
-          value={selectedCategory}
-          onChange={(e) => setSelectedCategory(e.target.value)}
-          style={{
-            padding: '0.75rem 1rem',
-            border: '1px solid #e2e8f0',
-            borderRadius: '8px',
-            fontSize: '1rem',
-            minWidth: '200px'
-          }}
-        >
-          <option value="">Todas las categorías</option>
-          {categorias.map(cat => (
-            <option key={cat.id} value={cat.id}>{cat.nombre}</option>
-          ))}
-        </select>
+        
+        {/* Filtros Avanzados */}
+        <div style={{
+          display: 'flex',
+          gap: '1rem',
+          flexWrap: 'wrap',
+          padding: '1rem',
+          background: 'white',
+          borderRadius: '8px',
+          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
+        }}>
+          <div style={{ flex: 1, minWidth: '120px' }}>
+            <label style={{
+              display: 'block',
+              fontSize: '0.875rem',
+              fontWeight: '600',
+              color: '#2d3748',
+              marginBottom: '0.5rem'
+            }}>Precio Min (S/)</label>
+            <input
+              type="number"
+              placeholder="0.00"
+              value={filtroPrecioMin}
+              onChange={(e) => setFiltroPrecioMin(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '0.75rem',
+                border: '1px solid #e2e8f0',
+                borderRadius: '8px',
+                fontSize: '0.875rem'
+              }}
+            />
+          </div>
+          <div style={{ flex: 1, minWidth: '120px' }}>
+            <label style={{
+              display: 'block',
+              fontSize: '0.875rem',
+              fontWeight: '600',
+              color: '#2d3748',
+              marginBottom: '0.5rem'
+            }}>Precio Max (S/)</label>
+            <input
+              type="number"
+              placeholder="9999.99"
+              value={filtroPrecioMax}
+              onChange={(e) => setFiltroPrecioMax(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '0.75rem',
+                border: '1px solid #e2e8f0',
+                borderRadius: '8px',
+                fontSize: '0.875rem'
+              }}
+            />
+          </div>
+          <div style={{ flex: 1, minWidth: '120px' }}>
+            <label style={{
+              display: 'block',
+              fontSize: '0.875rem',
+              fontWeight: '600',
+              color: '#2d3748',
+              marginBottom: '0.5rem'
+            }}>Stock Min</label>
+            <input
+              type="number"
+              placeholder="0"
+              value={filtroStockMin}
+              onChange={(e) => setFiltroStockMin(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '0.75rem',
+                border: '1px solid #e2e8f0',
+                borderRadius: '8px',
+                fontSize: '0.875rem'
+              }}
+            />
+          </div>
+          <div style={{ flex: 1, minWidth: '120px' }}>
+            <label style={{
+              display: 'block',
+              fontSize: '0.875rem',
+              fontWeight: '600',
+              color: '#2d3748',
+              marginBottom: '0.5rem'
+            }}>Stock Max</label>
+            <input
+              type="number"
+              placeholder="9999"
+              value={filtroStockMax}
+              onChange={(e) => setFiltroStockMax(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '0.75rem',
+                border: '1px solid #e2e8f0',
+                borderRadius: '8px',
+                fontSize: '0.875rem'
+              }}
+            />
+          </div>
+          {(filtroPrecioMin || filtroPrecioMax || filtroStockMin || filtroStockMax) && (
+            <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+              <button
+                onClick={() => {
+                  setFiltroPrecioMin('');
+                  setFiltroPrecioMax('');
+                  setFiltroStockMin('');
+                  setFiltroStockMax('');
+                }}
+                style={{
+                  padding: '0.75rem 1rem',
+                  background: '#e2e8f0',
+                  color: '#4a5568',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  fontSize: '0.875rem'
+                }}
+              >
+                Limpiar Filtros
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Table */}
@@ -203,16 +399,35 @@ function Productos() {
                 <tr style={{
                   borderBottom: '1px solid #e2e8f0'
                 }}>
-                  <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.875rem', color: '#718096', fontWeight: '600' }}>Producto</th>
-                  <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.875rem', color: '#718096', fontWeight: '600' }}>Categoría</th>
-                  <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.875rem', color: '#718096', fontWeight: '600' }}>Precio</th>
-                  <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.875rem', color: '#718096', fontWeight: '600' }}>Stock</th>
+                  <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.875rem', color: '#718096', fontWeight: '600', cursor: 'pointer' }}
+                      onClick={() => handleSort('nombre')}>
+                    Producto {sortField === 'nombre' && (sortDirection === 'asc' ? '↑' : '↓')}
+                  </th>
+                  <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.875rem', color: '#718096', fontWeight: '600', cursor: 'pointer' }}
+                      onClick={() => handleSort('categoria')}>
+                    Categoría {sortField === 'categoria' && (sortDirection === 'asc' ? '↑' : '↓')}
+                  </th>
+                  <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.875rem', color: '#718096', fontWeight: '600', cursor: 'pointer' }}
+                      onClick={() => handleSort('precio')}>
+                    Precio {sortField === 'precio' && (sortDirection === 'asc' ? '↑' : '↓')}
+                  </th>
+                  <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.875rem', color: '#718096', fontWeight: '600', cursor: 'pointer' }}
+                      onClick={() => handleSort('stock')}>
+                    Stock {sortField === 'stock' && (sortDirection === 'asc' ? '↑' : '↓')}
+                  </th>
                   <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.875rem', color: '#718096', fontWeight: '600' }}>Estado</th>
                   <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.875rem', color: '#718096', fontWeight: '600' }}>Acciones</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredProductos.map(producto => (
+                {filteredProductos.length === 0 ? (
+                  <tr>
+                    <td colSpan="6" style={{ padding: '2rem', textAlign: 'center', color: '#718096' }}>
+                      No se encontraron productos con los filtros aplicados
+                    </td>
+                  </tr>
+                ) : (
+                  filteredProductos.map(producto => (
                   <tr key={producto.id} style={{
                     borderBottom: '1px solid #e2e8f0'
                   }}>
@@ -291,12 +506,24 @@ function Productos() {
                       </div>
                     </td>
                   </tr>
-                ))}
+                  ))
+                )}
               </tbody>
             </table>
           </div>
         )}
       </div>
+
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={confirmModal.close}
+        onConfirm={confirmDelete}
+        title="Eliminar Producto"
+        message="¿Está seguro de que desea eliminar este producto? Esta acción no se puede deshacer."
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+        variant="danger"
+      />
     </main>
   );
 }

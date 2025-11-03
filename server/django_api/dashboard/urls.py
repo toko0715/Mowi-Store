@@ -11,5 +11,8 @@ router.register(r'detalles', views.DetallePedidoViewSet)
 
 urlpatterns = [
     path('ping/', views.ping, name='ping'),
+    path('ventas-por-categoria/', views.ventas_por_categoria, name='ventas-por-categoria'),
+    path('productos-mas-vendidos/', views.productos_mas_vendidos, name='productos-mas-vendidos'),
+    path('usuarios-activos-semana/', views.usuarios_activos_semana, name='usuarios-activos-semana'),
     path('', include(router.urls)),
 ]

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import api from '../services/api';
+import { useToast } from '../context/ToastContext';
 
 function ProductoForm() {
   const { id } = useParams();
@@ -20,6 +21,8 @@ function ProductoForm() {
   const [categorias, setCategorias] = useState([]);
   const [loading, setLoading] = useState(false);
   const [previewImage, setPreviewImage] = useState('');
+  const [errors, setErrors] = useState({});
+  const toast = useToast();
 
   useEffect(() => {
     loadCategorias();
@@ -52,7 +55,7 @@ function ProductoForm() {
       setPreviewImage(producto.imagen || '');
     } catch (error) {
       console.error('Error loading producto:', error);
-      alert('Error al cargar el producto');
+      toast.error('Error al cargar el producto');
       navigate('/productos');
     }
   };
@@ -76,8 +79,49 @@ function ProductoForm() {
     }
   };
 
+  // Validación de formulario
+  const validateForm = () => {
+    const newErrors = {};
+
+    if (!formData.nombre || formData.nombre.trim().length < 2) {
+      newErrors.nombre = 'El nombre debe tener al menos 2 caracteres';
+    }
+
+    if (!formData.categoria) {
+      newErrors.categoria = 'Debe seleccionar una categoría';
+    }
+
+    const precio = parseFloat(formData.precio);
+    if (!formData.precio || isNaN(precio) || precio <= 0) {
+      newErrors.precio = 'El precio debe ser mayor a 0';
+    }
+
+    const stock = parseInt(formData.stock);
+    if (formData.stock === '' || isNaN(stock) || stock < 0) {
+      newErrors.stock = 'El stock debe ser un número entero mayor o igual a 0';
+    }
+
+    // Validar URL de imagen si se proporciona
+    if (formData.imagen && formData.imagen.trim() !== '') {
+      try {
+        new URL(formData.imagen);
+      } catch {
+        newErrors.imagen = 'La URL de la imagen no es válida';
+      }
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (!validateForm()) {
+      toast.error('Por favor, corrija los errores en el formulario');
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -90,14 +134,16 @@ function ProductoForm() {
 
       if (isEditing) {
         await api.updateProducto(id, dataToSubmit);
+        toast.success('Producto actualizado exitosamente');
       } else {
         await api.createProducto(dataToSubmit);
+        toast.success('Producto creado exitosamente');
       }
 
       navigate('/productos');
     } catch (error) {
       console.error('Error saving producto:', error);
-      alert('Error al guardar el producto');
+      toast.error('Error al guardar el producto');
     } finally {
       setLoading(false);
     }
@@ -207,11 +253,19 @@ function ProductoForm() {
                 style={{
                   width: '100%',
                   padding: '0.75rem',
-                  border: '1px solid #e2e8f0',
+                  border: errors.imagen ? '1px solid #f56565' : '1px solid #e2e8f0',
                   borderRadius: '8px',
                   fontSize: '1rem'
                 }}
               />
+              {errors.imagen && (
+                <p style={{ fontSize: '0.875rem', color: '#f56565', marginTop: '0.25rem' }}>
+                  {errors.imagen}
+                </p>
+              )}
+              <p style={{ fontSize: '0.75rem', color: '#718096', marginTop: '0.5rem' }}>
+                Opcional: Ingrese una URL válida de imagen
+              </p>
             </div>
           </div>
 
@@ -222,6 +276,7 @@ function ProductoForm() {
               fontWeight: '600',
               color: '#2d3748'
             }}>
+              Nombre del Producto *
             </label>
             <input
               type="text"
@@ -232,12 +287,17 @@ function ProductoForm() {
               style={{
                 width: '100%',
                 padding: '0.75rem',
-                border: '1px solid #e2e8f0',
+                border: errors.nombre ? '1px solid #f56565' : '1px solid #e2e8f0',
                 borderRadius: '8px',
                 fontSize: '1rem'
               }}
               placeholder="Ej: iPhone 15 Pro Max"
             />
+            {errors.nombre && (
+              <p style={{ fontSize: '0.875rem', color: '#f56565', marginTop: '0.25rem' }}>
+                {errors.nombre}
+              </p>
+            )}
           </div>
 
           <div style={{ marginBottom: '1.5rem' }}>
@@ -290,18 +350,23 @@ function ProductoForm() {
                 style={{
                   width: '100%',
                   padding: '0.75rem',
-                  border: '1px solid #e2e8f0',
+                  border: errors.categoria ? '1px solid #f56565' : '1px solid #e2e8f0',
                   borderRadius: '8px',
                   fontSize: '1rem',
                   background: 'white'
                 }}
               >
-                <option value="">Seleccionar categoría</option>
-                {categorias.map(cat => (
-                  <option key={cat.id} value={cat.id}>{cat.nombre}</option>
-                ))}
-              </select>
-            </div>
+                  <option value="">Seleccionar categoría</option>
+                  {categorias.map(cat => (
+                    <option key={cat.id} value={cat.id}>{cat.nombre}</option>
+                  ))}
+                </select>
+                {errors.categoria && (
+                  <p style={{ fontSize: '0.875rem', color: '#f56565', marginTop: '0.25rem' }}>
+                    {errors.categoria}
+                  </p>
+                )}
+              </div>
 
             <div>
               <label style={{
@@ -323,12 +388,17 @@ function ProductoForm() {
                 style={{
                   width: '100%',
                   padding: '0.75rem',
-                  border: '1px solid #e2e8f0',
+                  border: errors.precio ? '1px solid #f56565' : '1px solid #e2e8f0',
                   borderRadius: '8px',
                   fontSize: '1rem'
                 }}
                 placeholder="0.00"
               />
+              {errors.precio && (
+                <p style={{ fontSize: '0.875rem', color: '#f56565', marginTop: '0.25rem' }}>
+                  {errors.precio}
+                </p>
+              )}
             </div>
           </div>
 
@@ -355,15 +425,21 @@ function ProductoForm() {
                 onChange={handleInputChange}
                 required
                 min="0"
+                step="1"
                 style={{
                   width: '100%',
                   padding: '0.75rem',
-                  border: '1px solid #e2e8f0',
+                  border: errors.stock ? '1px solid #f56565' : '1px solid #e2e8f0',
                   borderRadius: '8px',
                   fontSize: '1rem'
                 }}
                 placeholder="0"
               />
+              {errors.stock && (
+                <p style={{ fontSize: '0.875rem', color: '#f56565', marginTop: '0.25rem' }}>
+                  {errors.stock}
+                </p>
+              )}
             </div>
 
             <div>

@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
+import { useToast } from '../context/ToastContext';
 
 function Inventario() {
   const [productos, setProductos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [productosLocal, setProductosLocal] = useState({});
+  const toast = useToast();
 
   useEffect(() => {
     fetchData();
@@ -14,10 +17,83 @@ function Inventario() {
     try {
       const productos = await api.getProductos();
       setProductos(productos);
+      // Inicializar productosLocal con los IDs y stocks
+      const local = {};
+      productos.forEach(p => {
+        local[p.id] = { stock: p.stock || 0, nombre: p.nombre };
+      });
+      setProductosLocal(local);
       setLoading(false);
     } catch (error) {
       console.error('Error fetching data:', error);
       setLoading(false);
+    }
+  };
+
+  const handleGenerateReport = () => {
+    // Crear el reporte en formato CSV
+    const csvContent = [
+      ['Producto', 'Stock', 'Estado', 'Valor Unitario', 'Valor Total'],
+      ...productos.map(p => [
+        p.nombre,
+        p.stock || 0,
+        p.stock < 15 ? 'Stock Bajo' : 'Normal',
+        `S/ ${parseFloat(p.precio).toFixed(2)}`,
+        `S/ ${(parseFloat(p.precio) * (p.stock || 0)).toFixed(2)}`
+      ])
+    ].map(row => row.join(',')).join('\n');
+
+    // Descargar el archivo
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `reporte_inventario_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success('Reporte descargado exitosamente');
+  };
+
+  const handleAdjustStock = (productoId, delta) => {
+    setProductosLocal(prev => {
+      const currentStock = prev[productoId]?.stock ?? productos.find(p => p.id === productoId)?.stock ?? 0;
+      const newStock = currentStock + delta;
+      return {
+        ...prev,
+        [productoId]: {
+          ...prev[productoId],
+          stock: newStock < 0 ? 0 : newStock,
+          nombre: prev[productoId]?.nombre || productos.find(p => p.id === productoId)?.nombre || ''
+        }
+      };
+    });
+  };
+
+  const handleSaveStock = async (producto) => {
+    try {
+      const nuevoStock = productosLocal[producto.id]?.stock !== undefined 
+        ? productosLocal[producto.id].stock 
+        : producto.stock;
+      await api.updateProducto(producto.id, {
+        ...producto,
+        stock: nuevoStock
+      });
+      toast.success('Stock actualizado exitosamente');
+      fetchData();
+      setProductosLocal(prev => {
+        const newLocal = { ...prev };
+        delete newLocal[producto.id];
+        return newLocal;
+      });
+    } catch (error) {
+      console.error('Error updating stock:', error);
+      toast.error('Error al actualizar el stock');
+      setProductosLocal(prev => ({
+        ...prev,
+        [producto.id]: { ...prev[producto.id], stock: producto.stock }
+      }));
     }
   };
 
@@ -26,18 +102,28 @@ function Inventario() {
   );
 
   const totalValor = productos.reduce((sum, p) => sum + (p.precio * (p.stock || 0)), 0);
-  const stockBajo = productos.filter(p => p.stock < 15).length;
+  const stockBajo = productos.filter(p => p.stock > 0 && p.stock < 15).length;
   const agotados = productos.filter(p => p.stock === 0).length;
 
-  const getStatusBadge = (stock, stockMin = 15, stockMax = 100) => {
+  const getStatusBadge = (stock, stockMin = 15) => {
+    if (stock === 0) {
+      return <span style={{
+        padding: '0.25rem 0.75rem',
+        borderRadius: '9999px',
+        fontSize: '0.75rem',
+        fontWeight: '500',
+        background: '#f56565',
+        color: 'white'
+      }}>Agotado</span>;
+    }
     if (stock < stockMin) {
       return <span style={{
         padding: '0.25rem 0.75rem',
         borderRadius: '9999px',
         fontSize: '0.75rem',
         fontWeight: '500',
-        background: '#e2e8f0',
-        color: '#4a5568'
+        background: '#fbd38d',
+        color: '#744210'
       }}>Stock Bajo</span>;
     }
     return <span style={{
@@ -45,7 +131,7 @@ function Inventario() {
       borderRadius: '9999px',
       fontSize: '0.75rem',
       fontWeight: '500',
-      background: '#ff6b35',
+      background: '#48bb78',
       color: 'white'
     }}>Normal</span>;
   };
@@ -79,18 +165,21 @@ function Inventario() {
             Controla y administra tu inventario
           </p>
         </div>
-        <button style={{
-          padding: '0.75rem 1.5rem',
-          background: '#ff6b35',
-          color: 'white',
-          border: 'none',
-          borderRadius: '8px',
-          fontWeight: '600',
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.5rem'
-        }}>
+        <button
+          onClick={handleGenerateReport}
+          style={{
+            padding: '0.75rem 1.5rem',
+            background: '#ff6b35',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            fontWeight: '600',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem'
+          }}
+        >
           📥 Generar Reporte
         </button>
       </div>
@@ -223,7 +312,6 @@ function Inventario() {
                 <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                   <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.875rem', color: '#718096', fontWeight: '600' }}>Producto</th>
                   <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.875rem', color: '#718096', fontWeight: '600' }}>Stock Actual</th>
-                  <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.875rem', color: '#718096', fontWeight: '600' }}>Min/Max</th>
                   <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.875rem', color: '#718096', fontWeight: '600' }}>Estado</th>
                   <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.875rem', color: '#718096', fontWeight: '600' }}>Proveedor</th>
                   <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.875rem', color: '#718096', fontWeight: '600' }}>Última Reposición</th>
@@ -235,12 +323,29 @@ function Inventario() {
                   <tr key={producto.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ padding: '1rem' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                        {producto.imagen ? (
+                          <img 
+                            src={producto.imagen} 
+                            alt={producto.nombre}
+                            style={{
+                              width: '50px',
+                              height: '50px',
+                              borderRadius: '8px',
+                              objectFit: 'cover',
+                              border: '1px solid #e2e8f0'
+                            }}
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                              e.target.nextElementSibling.style.display = 'flex';
+                            }}
+                          />
+                        ) : null}
                         <div style={{
-                          width: '40px',
-                          height: '40px',
+                          width: '50px',
+                          height: '50px',
                           background: '#e2e8f0',
-                          borderRadius: '50%',
-                          display: 'flex',
+                          borderRadius: '8px',
+                          display: producto.imagen ? 'none' : 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
                           fontSize: '1.5rem'
@@ -249,51 +354,76 @@ function Inventario() {
                         </div>
                         <div>
                           <div style={{ fontWeight: '600', color: '#2d3748' }}>{producto.nombre}</div>
-                          <div style={{ fontSize: '0.875rem', color: '#718096' }}>{producto.marca} • {producto.categoria}</div>
+                          <div style={{ fontSize: '0.875rem', color: '#718096' }}>
+                            {producto.categoria_nombre || 'Sin categoría'}
+                          </div>
                         </div>
                       </div>
                     </td>
                     <td style={{ padding: '1rem' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        {producto.stock < 15 ? '🔴' : '🟢'}
-                        <span style={{ fontWeight: '600', color: '#2d3748' }}>{producto.stock || 0}</span>
+                        {(() => {
+                          const currentStock = productosLocal[producto.id]?.stock !== undefined 
+                            ? productosLocal[producto.id].stock 
+                            : producto.stock || 0;
+                          if (currentStock === 0) return '🟣';
+                          if (currentStock < 15) return '🟠';
+                          return '🟢';
+                        })()}
+                        <span style={{ fontWeight: '600', color: '#2d3748' }}>
+                          {productosLocal[producto.id]?.stock !== undefined 
+                            ? productosLocal[producto.id].stock 
+                            : producto.stock || 0}
+                        </span>
                         <div style={{ display: 'flex', gap: '0.25rem' }}>
-                          <button style={{
-                            padding: '0.25rem 0.5rem',
-                            border: '1px solid #e2e8f0',
-                            background: 'white',
-                            borderRadius: '4px',
-                            cursor: 'pointer'
-                          }}>-</button>
-                          <button style={{
-                            padding: '0.25rem 0.5rem',
-                            border: '1px solid #e2e8f0',
-                            background: 'white',
-                            borderRadius: '4px',
-                            cursor: 'pointer'
-                          }}>+</button>
+                          <button
+                            onClick={() => handleAdjustStock(producto.id, -1)}
+                            style={{
+                              padding: '0.25rem 0.5rem',
+                              border: '1px solid #e2e8f0',
+                              background: 'white',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              fontSize: '1rem'
+                            }}
+                          >-</button>
+                          <button
+                            onClick={() => handleAdjustStock(producto.id, 1)}
+                            style={{
+                              padding: '0.25rem 0.5rem',
+                              border: '1px solid #e2e8f0',
+                              background: 'white',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              fontSize: '1rem'
+                            }}
+                          >+</button>
                         </div>
                       </div>
                     </td>
-                    <td style={{ padding: '1rem', fontSize: '0.875rem', color: '#718096' }}>
-                      Mín: 10<br />Máx: 100
+                    <td style={{ padding: '1rem' }}>
+                      {getStatusBadge(productosLocal[producto.id]?.stock !== undefined 
+                        ? productosLocal[producto.id].stock 
+                        : producto.stock)}
                     </td>
-                    <td style={{ padding: '1rem' }}>{getStatusBadge(producto.stock)}</td>
                     <td style={{ padding: '1rem', color: '#2d3748' }}>Proveedor General</td>
                     <td style={{ padding: '1rem', color: '#718096', fontSize: '0.875rem' }}>
                       {new Date().toLocaleDateString('es-PE')}
                     </td>
                     <td style={{ padding: '1rem' }}>
-                      <button style={{
-                        padding: '0.5rem 1rem',
-                        background: '#ff6b35',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '6px',
-                        fontSize: '0.875rem',
-                        cursor: 'pointer'
-                      }}>
-                        Reponer Stock
+                      <button
+                        onClick={() => handleSaveStock(producto)}
+                        style={{
+                          padding: '0.5rem 1rem',
+                          background: '#ff6b35',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '6px',
+                          fontSize: '0.875rem',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Guardar Stock
                       </button>
                     </td>
                   </tr>

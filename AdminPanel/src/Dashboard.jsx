@@ -1,14 +1,22 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import api from './services/api';
+import KPICard from './components/KPICard';
+import BarChart from './components/charts/BarChart';
+import PieChart from './components/charts/PieChart';
+import LineChart from './components/charts/LineChart';
 
 function Dashboard() {
   const [data, setData] = useState({
     productos: [],
     usuarios: [],
     pedidos: [],
+    ventasPorCategoria: [],
+    productosMasVendidos: [],
+    usuariosActivosSemana: [],
     loading: true,
     error: null
   });
+  const [periodoFiltro, setPeriodoFiltro] = useState('semana'); // 'hoy', 'semana', 'mes'
 
   useEffect(() => {
     fetchDashboardData();
@@ -16,16 +24,29 @@ function Dashboard() {
 
   const fetchDashboardData = async () => {
     try {
-      const [productosRes, usuariosRes, pedidosRes] = await Promise.all([
+      const [
+        productosRes, 
+        usuariosRes, 
+        pedidosRes,
+        ventasRes,
+        masVendidosRes,
+        usuariosSemanaRes
+      ] = await Promise.all([
         api.getProductos().catch(() => []),
         api.getUsuarios().catch(() => []),
-        api.getPedidos().catch(() => [])
+        api.getPedidos().catch(() => []),
+        api.getVentasPorCategoria().catch(() => []),
+        api.getProductosMasVendidos().catch(() => []),
+        api.getUsuariosActivosSemana().catch(() => [])
       ]);
 
       setData({
         productos: productosRes,
         usuarios: usuariosRes,
         pedidos: pedidosRes,
+        ventasPorCategoria: ventasRes,
+        productosMasVendidos: masVendidosRes,
+        usuariosActivosSemana: usuariosSemanaRes,
         loading: false,
         error: null
       });
@@ -39,12 +60,48 @@ function Dashboard() {
     }
   };
 
-  const stats = {
+  // Filtrar datos según el período seleccionado (optimizado con useMemo)
+  const filteredData = useMemo(() => {
+    const ahora = new Date();
+    let fechaInicio;
+    
+    switch (periodoFiltro) {
+      case 'hoy':
+        fechaInicio = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
+        break;
+      case 'semana':
+        fechaInicio = new Date(ahora);
+        fechaInicio.setDate(ahora.getDate() - 7);
+        break;
+      case 'mes':
+        fechaInicio = new Date(ahora);
+        fechaInicio.setMonth(ahora.getMonth() - 1);
+        break;
+      default:
+        fechaInicio = new Date(ahora);
+        fechaInicio.setDate(ahora.getDate() - 7);
+    }
+    
+    const pedidosFiltrados = data.pedidos?.filter(p => {
+      const fechaPedido = new Date(p.fecha_pedido);
+      return fechaPedido >= fechaInicio && fechaPedido <= ahora;
+    }) || [];
+    
+    return {
+      pedidos: pedidosFiltrados,
+      totalVentas: pedidosFiltrados.reduce((sum, p) => sum + parseFloat(p.total || 0), 0)
+    };
+  }, [data.pedidos, periodoFiltro]);
+  
+  // Stats optimizado con useMemo
+  const stats = useMemo(() => ({
     totalProductos: data.productos?.length || 0,
     totalUsuarios: data.usuarios?.length || 0,
-    pedidosActivos: data.pedidos?.filter(p => p.estado === 'Pendiente')?.length || 0,
-    productosBajoStock: data.productos?.filter(p => p.stock < 10)?.length || 0
-  };
+    pedidosActivos: filteredData.pedidos.filter(p => p.estado === 'pendiente')?.length || 0,
+    productosBajoStock: data.productos?.filter(p => p.stock < 10)?.length || 0,
+    totalVentas: filteredData.totalVentas,
+    pedidosPeriodo: filteredData.pedidos.length
+  }), [data.productos, data.usuarios, filteredData]);
 
   return (
     <main style={{
@@ -55,20 +112,60 @@ function Dashboard() {
     }}>
       {/* Header */}
       <div style={{ marginBottom: '2rem' }}>
-        <h1 style={{
-          fontSize: '2.5rem',
-          fontWeight: '700',
-          color: '#2d3748',
-          marginBottom: '0.5rem'
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          marginBottom: '1rem'
         }}>
-          Panel de Control
-        </h1>
-        <p style={{
-          fontSize: '1.125rem',
-          color: '#718096'
-        }}>
-          Resumen general de tu tienda MOWI
-        </p>
+          <div>
+            <h1 style={{
+              fontSize: '2.5rem',
+              fontWeight: '700',
+              color: '#2d3748',
+              marginBottom: '0.5rem'
+            }}>
+              Panel de Control
+            </h1>
+            <p style={{
+              fontSize: '1.125rem',
+              color: '#718096'
+            }}>
+              Resumen general de tu tienda MOWI
+            </p>
+          </div>
+          
+          {/* Filtro de Período */}
+          <div style={{
+            display: 'flex',
+            gap: '0.5rem',
+            background: 'white',
+            padding: '0.5rem',
+            borderRadius: '8px',
+            boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
+          }}>
+            {['hoy', 'semana', 'mes'].map(periodo => (
+              <button
+                key={periodo}
+                onClick={() => setPeriodoFiltro(periodo)}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: periodoFiltro === periodo ? '#ff6b35' : 'transparent',
+                  color: periodoFiltro === periodo ? 'white' : '#4a5568',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  fontSize: '0.875rem',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                {periodo.charAt(0).toUpperCase() + periodo.slice(1)}
+              </button>
+            ))}
+          </div>
+        </div>
+        
         {data.error && (
           <div style={{
             padding: '1rem',
@@ -104,12 +201,20 @@ function Dashboard() {
             iconBg="#4299e1"
           />
           <KPICard
-            title="PEDIDOS ACTIVOS"
-            value={stats.pedidosActivos}
-            change="Pedidos pendientes"
+            title={`PEDIDOS ${periodoFiltro.toUpperCase()}`}
+            value={stats.pedidosPeriodo}
+            change={`${stats.pedidosActivos} pendientes`}
             icon="🛒"
             color="#48bb78"
             iconBg="#48bb78"
+          />
+          <KPICard
+            title="VENTAS PERÍODO"
+            value={`S/ ${stats.totalVentas.toFixed(2)}`}
+            change={`Última ${periodoFiltro}`}
+            icon="💰"
+            color="#4299e1"
+            iconBg="#4299e1"
           />
           <KPICard
             title="PRODUCTOS CON BAJO STOCK"
@@ -119,14 +224,6 @@ function Dashboard() {
             color="#f56565"
             iconBg="#ed8936"
             isWarning={true}
-          />
-          <KPICard
-            title="USUARIOS ACTIVOS"
-            value={stats.totalUsuarios}
-            change="Total de usuarios"
-            icon="👥"
-            color="#48bb78"
-            iconBg="#ff6b35"
           />
         </div>
       )}
@@ -155,7 +252,7 @@ function Dashboard() {
           }}>
             Ventas por Categoría
           </h3>
-          <BarChart />
+          <BarChart data={data.ventasPorCategoria} />
         </div>
 
         {/* Pie Chart */}
@@ -174,7 +271,7 @@ function Dashboard() {
           }}>
             Productos Más Vendidos
           </h3>
-          <PieChart />
+          <PieChart data={data.productosMasVendidos} />
         </div>
 
         {/* Line Chart */}
@@ -194,154 +291,13 @@ function Dashboard() {
           }}>
             Usuarios Activos (Última Semana)
           </h3>
-          <LineChart />
+          <LineChart data={data.usuariosActivosSemana} />
         </div>
       </div>
     </main>
   );
 }
 
-function KPICard({ title, value, change, icon, color, iconBg, isWarning = false }) {
-  return (
-    <div style={{
-      background: 'white',
-      borderRadius: '12px',
-      padding: '1.5rem',
-      boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
-      border: '1px solid #e2e8f0'
-    }}>
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'start',
-        marginBottom: '1rem'
-      }}>
-        <div style={{ flex: 1 }}>
-          <p style={{
-            fontSize: '0.875rem',
-            color: '#718096',
-            marginBottom: '0.5rem',
-            fontWeight: '600'
-          }}>
-            {title}
-          </p>
-          <h3 style={{
-            fontSize: '2rem',
-            fontWeight: '700',
-            color: color,
-            marginBottom: '0.5rem'
-          }}>
-            {value}
-          </h3>
-        </div>
-        <div style={{
-          width: '48px',
-          height: '48px',
-          borderRadius: '50%',
-          background: iconBg,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontSize: '1.5rem'
-        }}>
-          {icon}
-        </div>
-      </div>
-      <p style={{
-        fontSize: '0.875rem',
-        color: color,
-        display: 'flex',
-        alignItems: 'center',
-        gap: '0.25rem'
-      }}>
-        {!isWarning && '↗'} {change}
-      </p>
-    </div>
-  );
-}
 
-function BarChart() {
-  const data = [
-    { category: 'Tecnología', value: 2400 },
-    { category: 'Moda', value: 1800 },
-    { category: 'Hogar', value: 1200 },
-    { category: 'Mascotas', value: 700 },
-    { category: 'Bebés', value: 600 },
-    { category: 'Juguetes', value: 400 }
-  ];
-  
-  const maxValue = Math.max(...data.map(d => d.value));
-
-  return (
-    <div style={{ height: '250px', display: 'flex', alignItems: 'end', gap: '0.75rem' }}>
-      {data.map((item, index) => (
-        <div key={index} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <div style={{
-            width: '100%',
-            height: `${(item.value / maxValue) * 100}%`,
-            background: '#ff6b35',
-            borderRadius: '4px 4px 0 0',
-            minHeight: '20px'
-          }}></div>
-          <span style={{
-            fontSize: '0.75rem',
-            color: '#718096',
-            marginTop: '0.5rem'
-          }}>
-            {item.category}
-          </span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function PieChart() {
-  const data = [
-    { label: 'Tecnología', percentage: 33, color: '#ff6b35' },
-    { label: 'Moda', percentage: 25, color: '#ffd93d' },
-    { label: 'Hogar', percentage: 17, color: '#4299e1' },
-    { label: 'Mascotas', percentage: 11, color: '#48bb78' },
-    { label: 'Bebés', percentage: 8, color: '#9f7aea' },
-    { label: 'Juguetes', percentage: 6, color: '#ed8936' }
-  ];
-
-  return (
-    <div style={{ height: '250px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '0.75rem' }}>
-      {data.map((item, index) => (
-        <div key={index} style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.75rem'
-        }}>
-          <div style={{
-            width: '24px',
-            height: '24px',
-            borderRadius: '4px',
-            background: item.color
-          }}></div>
-          <span style={{
-            fontSize: '0.875rem',
-            color: '#2d3748'
-          }}>
-            {item.label} {item.percentage}%
-          </span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function LineChart() {
-  const data = [1400, 1350, 1500, 1600, 1800, 1750, 1800];
-  const maxValue = Math.max(...data);
-  const minValue = Math.min(...data);
-
-  return (
-    <div style={{ height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#718096' }}>
-      <p>Gráfico de línea de usuarios activos</p>
-    </div>
-  );
-}
 
 export default Dashboard;

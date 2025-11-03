@@ -104,6 +104,11 @@ export const api = {
   deleteDetallePedido: (id) => fetchAPI(`/detalles/${id}/`, {
     method: 'DELETE',
   }),
+
+  // Estadísticas
+  getVentasPorCategoria: () => fetchAPI('/ventas-por-categoria/'),
+  getProductosMasVendidos: () => fetchAPI('/productos-mas-vendidos/'),
+  getUsuariosActivosSemana: () => fetchAPI('/usuarios-activos-semana/'),
 };
 
 export default api;
