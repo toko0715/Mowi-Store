@@ -1,6 +1,7 @@
 .footer {
   background: #f5f5f5;
-  padding: 60px 60px 30px;
+  color: #333;
+  padding: 60px 60px 20px;
   margin-top: 80px;
 }
 
@@ -76,12 +77,36 @@
 
 .contact-icon {
   font-size: 18px;
+  display: inline-block;
+}
+
+.contact-phone {
+  filter: hue-rotate(300deg) saturate(1.5);
+}
+
+.contact-email {
+  filter: hue-rotate(200deg) saturate(1.2);
+}
+
+.contact-time {
+  filter: grayscale(0.3);
 }
 
 .footer-divider {
   height: 1px;
   background: #e0e0e0;
   margin-top: 40px;
+}
+
+.footer-copyright {
+  text-align: center;
+  padding-top: 20px;
+}
+
+.footer-copyright p {
+  margin: 0;
+  font-size: 14px;
+  color: #666;
 }
 
 @media (max-width: 1024px) {

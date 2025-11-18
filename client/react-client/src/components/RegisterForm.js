@@ -191,8 +191,29 @@ function RegisterForm() {
 
       <p className="terms-text">
         Al crear una cuenta, aceptas nuestros{' '}
-        <a href="#">Términos y Condiciones</a> y{' '}
-        <a href="#">Política de Privacidad</a>
+        <button 
+          type="button"
+          className="terms-link"
+          onClick={(e) => {
+            e.preventDefault();
+            // TODO: Implementar página de términos y condiciones
+            alert('Página de Términos y Condiciones próximamente');
+          }}
+        >
+          Términos y Condiciones
+        </button>{' '}
+        y{' '}
+        <button 
+          type="button"
+          className="terms-link"
+          onClick={(e) => {
+            e.preventDefault();
+            // TODO: Implementar página de política de privacidad
+            alert('Página de Política de Privacidad próximamente');
+          }}
+        >
+          Política de Privacidad
+        </button>
       </p>
     </form>
   );

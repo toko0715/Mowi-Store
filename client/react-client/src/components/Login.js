@@ -133,9 +133,17 @@ function Login({ onSwitchToRegister, onLoginSuccess }) {
         Iniciar Sesión
       </button>
 
-      <a href="#" className="forgot-password">
+      <button 
+        type="button" 
+        className="forgot-password"
+        onClick={(e) => {
+          e.preventDefault();
+          // TODO: Implementar funcionalidad de recuperación de contraseña
+          alert('Funcionalidad de recuperación de contraseña próximamente');
+        }}
+      >
         ¿Olvidaste tu contraseña?
-      </a>
+      </button>
     </form>
   );
 }

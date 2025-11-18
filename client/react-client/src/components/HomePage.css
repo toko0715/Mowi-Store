@@ -4,13 +4,36 @@
 
 /* Hero Banner Section */
 .hero-banner {
-  background: #000;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
   min-height: 60vh;
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
   padding: 80px 20px;
+  overflow: hidden;
+}
+
+.hero-banner::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    radial-gradient(circle at 20% 50%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(255, 255, 255, 0.1) 0%, transparent 50%);
+  animation: pulse 8s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
 }
 
 .hero-content {
@@ -35,44 +58,73 @@
 .hero-btn {
   display: inline-block;
   padding: 16px 40px;
-  background: #FF8C00;
+  background: linear-gradient(135deg, #FF8C00 0%, #FF6B35 100%);
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: 50px;
   font-size: 18px;
   font-weight: 600;
   text-decoration: none;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  box-shadow: 0 4px 15px rgba(255, 140, 0, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-btn::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s, height 0.6s;
+}
+
+.hero-btn:hover::before {
+  width: 300px;
+  height: 300px;
 }
 
 .hero-btn:hover {
-  background: #E67E00;
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(255, 140, 0, 0.4);
+  background: linear-gradient(135deg, #FF6B35 0%, #FF8C00 100%);
+  transform: translateY(-3px) scale(1.05);
+  box-shadow: 0 10px 30px rgba(255, 140, 0, 0.5);
+}
+
+.hero-btn:active {
+  transform: translateY(-1px) scale(1.02);
 }
 
 .carousel-arrow {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  background: rgba(255, 255, 255, 0.2);
-  border: none;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(10px);
+  border: 2px solid rgba(255, 255, 255, 0.3);
   color: white;
   font-size: 32px;
   width: 50px;
   height: 50px;
   border-radius: 50%;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   z-index: 2;
   display: flex;
   align-items: center;
   justify-content: center;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
 }
 
 .carousel-arrow:hover {
   background: rgba(255, 255, 255, 0.3);
+  transform: translateY(-50%) scale(1.1);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
 }
 
 .carousel-arrow-left {
@@ -131,31 +183,56 @@
 
 .category-card {
   background: white;
-  border: 1px solid #e0e0e0;
-  border-radius: 12px;
+  border: 2px solid #f0f0f0;
+  border-radius: 16px;
   padding: 30px 20px;
   text-align: center;
   text-decoration: none;
   color: #333;
-  transition: all 0.3s;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+
+.category-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 140, 0, 0.1), transparent);
+  transition: left 0.5s;
+}
+
+.category-card:hover::before {
+  left: 100%;
 }
 
 .category-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 0 12px 30px rgba(255, 140, 0, 0.2);
   border-color: #FF8C00;
+  background: linear-gradient(135deg, #fff 0%, #fff8f0 100%);
 }
 
 .category-icon-wrapper {
   width: 80px;
   height: 80px;
-  background: #000;
-  border-radius: 12px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
   margin: 0 auto 20px;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+.category-card:hover .category-icon-wrapper {
+  transform: rotate(5deg) scale(1.1);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
 }
 
 .category-icon {

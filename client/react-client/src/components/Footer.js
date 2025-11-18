@@ -26,25 +26,28 @@ function Footer() {
           <h4 className="footer-title">Atención al Cliente</h4>
           <div className="footer-contact">
             <div className="contact-item">
-              <span className="contact-icon">📞</span>
+              <span className="contact-icon contact-phone">📞</span>
               <span>+51 999 123 456</span>
             </div>
             <div className="contact-item">
-              <span className="contact-icon">✉️</span>
+              <span className="contact-icon contact-email">✉️</span>
               <span>soporte@mowi.pe</span>
             </div>
             <div className="contact-item">
-              <span className="contact-icon">🕐</span>
+              <span className="contact-icon contact-time">🕐</span>
               <span>Lunes a Viernes: 9AM - 6PM</span>
             </div>
             <div className="contact-item">
-              <span className="contact-icon">🕐</span>
+              <span className="contact-icon contact-time">🕐</span>
               <span>Sábados: 9AM - 2PM</span>
             </div>
           </div>
         </div>
       </div>
       <div className="footer-divider"></div>
+      <div className="footer-copyright">
+        <p>© 2024 MOWI. Todos los derechos reservados.</p>
+      </div>
     </footer>
   );
 }
