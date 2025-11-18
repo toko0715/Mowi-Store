@@ -104,11 +104,11 @@ function Pedidos() {
   const handleEditClick = useCallback((usuario) => {
     setEditingUser(usuario);
     setFormData({
-      nombre: usuario.nombre,
-      email: usuario.email,
+      nombre: usuario.nombre || usuario.name || '',
+      email: usuario.email || '',
       password: '',
-      rol: usuario.rol,
-      activo: usuario.activo
+      rol: usuario.rol || (usuario.is_admin || usuario.is_staff ? 'admin' : 'cliente'),
+      activo: usuario.activo !== undefined ? usuario.activo : (usuario.is_active !== undefined ? usuario.is_active : true)
     });
     usuarioModal.open(usuario);
   }, [usuarioModal]);
@@ -199,10 +199,12 @@ function Pedidos() {
 
   // Filtrar usuarios (optimizado con useMemo)
   const filteredUsuarios = useMemo(() => {
-    return usuarios.filter(usuario =>
-      usuario.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      usuario.email?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    return usuarios.filter(usuario => {
+      const nombre = (usuario.nombre || usuario.name || '').toLowerCase();
+      const email = (usuario.email || '').toLowerCase();
+      const term = searchTerm.toLowerCase();
+      return nombre.includes(term) || email.includes(term);
+    });
   }, [usuarios, searchTerm]);
 
   return (

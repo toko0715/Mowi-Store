@@ -1,22 +1,28 @@
 from rest_framework import viewsets
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
-from django.db.models import Sum, Count, Q
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from django.db.models import Sum, Count, Q, F
+from django.contrib.auth import get_user_model
 from datetime import datetime, timedelta
-from .models import Producto, Categoria, Usuario, Pedido, DetallePedido
+from .models import Producto, Categoria, Pedido, DetallePedido
 from .serializers import ProductoSerializer, CategoriaSerializer, UsuarioSerializer, PedidoSerializer, DetallePedidoSerializer
+
+User = get_user_model()
 
 
 @api_view(['GET'])
+@permission_classes([AllowAny])
 def ping(request):
     return Response({"message": "Servidor Django funcionando correctamente ✅"})
 
 
 @api_view(['GET'])
+@permission_classes([AllowAny])  # Permitir acceso sin autenticación para estadísticas
 def ventas_por_categoria(request):
     """Ventas totales agrupadas por categoría"""
     ventas = DetallePedido.objects.values('producto__categoria__nombre').annotate(
-        total_ventas=Sum('subtotal')
+        total_ventas=Sum(F('cantidad') * F('precio_unitario'))
     ).order_by('-total_ventas')
     
     resultado = []
@@ -30,6 +36,7 @@ def ventas_por_categoria(request):
 
 
 @api_view(['GET'])
+@permission_classes([AllowAny])  # Permitir acceso sin autenticación para estadísticas
 def productos_mas_vendidos(request):
     """Productos más vendidos con porcentajes"""
     # Total de productos vendidos
@@ -55,13 +62,14 @@ def productos_mas_vendidos(request):
 
 
 @api_view(['GET'])
+@permission_classes([AllowAny])  # Permitir acceso sin autenticación para estadísticas
 def usuarios_activos_semana(request):
-    """Usuarios activos en la última semana (basado en fecha_registro)"""
+    """Usuarios activos en la última semana (basado en date_joined)"""
     fecha_inicio = datetime.now() - timedelta(days=6)
     
     # Contar usuarios registrados por día en la última semana
-    usuarios = Usuario.objects.filter(fecha_registro__gte=fecha_inicio).extra(
-        select={'dia': 'DATE(fecha_registro)'}
+    usuarios = User.objects.filter(date_joined__gte=fecha_inicio).extra(
+        select={'dia': 'DATE(date_joined)'}
     ).values('dia').annotate(cantidad=Count('id'))
     
     # Crear lista con todos los días de la semana
@@ -95,7 +103,7 @@ class ProductoViewSet(viewsets.ModelViewSet):
 
 
 class UsuarioViewSet(viewsets.ModelViewSet):
-    queryset = Usuario.objects.all()
+    queryset = User.objects.all()
     serializer_class = UsuarioSerializer
 
 

@@ -38,19 +38,24 @@ function UsuariosTable({ usuarios, onEdit, onDelete }) {
               </td>
             </tr>
           ) : (
-            usuarios.map(usuario => (
+            usuarios.map(usuario => {
+              const nombre = usuario.nombre || usuario.name || '';
+              const rol = usuario.rol || (usuario.is_admin || usuario.is_staff ? 'admin' : 'cliente');
+              const activo = usuario.activo !== undefined ? usuario.activo : (usuario.is_active !== undefined ? usuario.is_active : true);
+              
+              return (
               <tr key={usuario.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
                 <td style={{ padding: '1rem', fontWeight: '600', color: '#2d3748' }}>#{usuario.id}</td>
-                <td style={{ padding: '1rem', fontWeight: '600', color: '#2d3748' }}>{usuario.nombre}</td>
+                <td style={{ padding: '1rem', fontWeight: '600', color: '#2d3748' }}>{nombre}</td>
                 <td style={{ padding: '1rem', color: '#718096' }}>{usuario.email}</td>
                 <td style={{ padding: '1rem' }}>
-                  <Badge variant={usuario.rol === 'admin' ? 'info' : 'success'}>
-                    {usuario.rol}
+                  <Badge variant={rol === 'admin' ? 'info' : 'success'}>
+                    {rol}
                   </Badge>
                 </td>
                 <td style={{ padding: '1rem' }}>
-                  <Badge variant={usuario.activo ? 'success' : 'danger'}>
-                    {usuario.activo ? 'Activo' : 'Inactivo'}
+                  <Badge variant={activo ? 'success' : 'danger'}>
+                    {activo ? 'Activo' : 'Inactivo'}
                   </Badge>
                 </td>
                 <td style={{ padding: '1rem' }}>
@@ -84,7 +89,8 @@ function UsuariosTable({ usuarios, onEdit, onDelete }) {
                   </div>
                 </td>
               </tr>
-            ))
+              );
+            })
           )}
         </tbody>
       </table>

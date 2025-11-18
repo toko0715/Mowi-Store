@@ -5,22 +5,58 @@ const API_BASE_URL = '/api/dashboard';
 // Fetch helper
 async function fetchAPI(endpoint, options = {}) {
   const url = `${API_BASE_URL}${endpoint}`;
+  
+  // Obtener token de autenticación desde localStorage
+  const token = localStorage.getItem('access_token');
+  
+  // Debug: Verificar si hay token
+  if (!token) {
+    console.warn('⚠️ No hay token de autenticación. Las peticiones que requieren autenticación fallarán.');
+    console.warn('💡 Por favor, inicia sesión desde http://localhost:3000');
+  }
+  
+  // Construir headers
+  const headers = {
+    'Content-Type': 'application/json',
+    ...options.headers,
+  };
+  
+  // Agregar token de autenticación si existe
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+    console.log('✅ Token agregado a la petición:', endpoint);
+  } else {
+    console.warn('❌ Sin token para:', endpoint);
+  }
+  
   const config = {
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
+    headers,
     ...options,
   };
 
   try {
     const response = await fetch(url, config);
+    
+    // Si el token expiró (401), mostrar mensaje claro
+    if (response.status === 401) {
+      if (token) {
+        console.error('❌ Token expirado o inválido. Por favor, inicia sesión nuevamente.');
+        console.error('💡 Ve a http://localhost:3000 para iniciar sesión');
+      } else {
+        console.error('❌ No hay token de autenticación. Por favor, inicia sesión.');
+        console.error('💡 Ve a http://localhost:3000 para iniciar sesión');
+      }
+    }
+    
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      const errorData = await response.json().catch(() => ({}));
+      const errorMessage = errorData.detail || errorData.message || `HTTP error! status: ${response.status}`;
+      console.error('❌ Error en petición:', endpoint, errorMessage);
+      throw new Error(errorMessage);
     }
     return await response.json();
   } catch (error) {
-    console.error('API Error:', error);
+    console.error('❌ API Error:', error);
     throw error;
   }
 }
