@@ -5,7 +5,9 @@ import com.stripe.exception.StripeException;
 import com.stripe.model.PaymentIntent;
 import com.stripe.param.PaymentIntentCreateParams;
 import mowi.store.sboot_api.model.Transaccion;
+import mowi.store.sboot_api.model.Pedido;
 import mowi.store.sboot_api.repository.TransaccionRepository;
+import mowi.store.sboot_api.repository.PedidoRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -19,6 +21,12 @@ public class PagoStripeService {
 
     @Autowired
     private TransaccionRepository transaccionRepository;
+
+    @Autowired
+    private PedidoRepository pedidoRepository;
+
+    @Autowired
+    private CarritoService carritoService;
 
     @Value("${stripe.api.key}")
     private String stripeApiKey;
@@ -92,6 +100,17 @@ public class PagoStripeService {
                     trans.setEstado("EXITOSO");
                     trans.setFechaPago(LocalDateTime.now());
                     transaccionRepository.save(trans);
+
+                    // Limpiar carrito del usuario asociado al pedido
+                    Pedido pedido = pedidoRepository.findById(trans.getPedidoId())
+                            .orElse(null);
+                    if (pedido != null) {
+                        try {
+                            carritoService.limpiarCarrito(pedido.getUsuarioId());
+                        } catch (Exception e) {
+                            // Ignorar errores al limpiar el carrito: no bloquear confirmación
+                        }
+                    }
 
                     respuesta.put("estado", "EXITOSO");
                     respuesta.put("mensaje", "✅ Pago procesado exitosamente");

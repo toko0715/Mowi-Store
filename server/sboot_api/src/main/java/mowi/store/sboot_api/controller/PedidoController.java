@@ -17,7 +17,7 @@ public class PedidoController {
     @Autowired
     private PedidoService pedidoService;
 
-    // POST /api/pago - Procesar pago simulado y crear pedido
+    // POST /api/pago - Crear pedido desde carrito
     @PostMapping("/pago")
     public Pedido procesarPago(
             @RequestParam Long usuarioId,

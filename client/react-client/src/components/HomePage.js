@@ -1,18 +1,40 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { categoriasAPI, productosAPI } from '../services/api';
+import LoadingSpinner from './LoadingSpinner';
+import ProductCard from './ProductCard';
 import './HomePage.css';
 
 function HomePage() {
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [categorias, setCategorias] = useState([]);
+  const [productosDestacados, setProductosDestacados] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const categories = [
-    { id: 1, name: 'Tecnología', icon: '📱', path: '/catalogo?categoria=tecnologia' },
-    { id: 2, name: 'Moda', icon: '👕', path: '/catalogo?categoria=moda' },
-    { id: 3, name: 'Hogar', icon: '🏠', path: '/catalogo?categoria=hogar' },
-    { id: 4, name: 'Mascotas', icon: '🐾', path: '/catalogo?categoria=mascotas' },
-    { id: 5, name: 'Bebés', icon: '👶', path: '/catalogo?categoria=bebes' },
-    { id: 6, name: 'Juguetes', icon: '🎮', path: '/catalogo?categoria=juguetes' },
-  ];
+  useEffect(() => {
+    cargarDatos();
+  }, []);
+
+  const cargarDatos = async () => {
+    try {
+      const [categoriasResponse, productosResponse] = await Promise.all([
+        categoriasAPI.listar(),
+        productosAPI.topVendidos(),
+      ]);
+      
+      setCategorias(categoriasResponse.data);
+      
+      // Obtener solo productos activos y limitar a 6
+      const productosActivos = productosResponse.data
+        .filter(p => p.activo !== false)
+        .slice(0, 6);
+      setProductosDestacados(productosActivos);
+    } catch (error) {
+      console.error('Error al cargar datos:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const nextSlide = () => {
     setCurrentSlide((prev) => (prev + 1) % 3);
@@ -21,6 +43,10 @@ function HomePage() {
   const prevSlide = () => {
     setCurrentSlide((prev) => (prev - 1 + 3) % 3);
   };
+
+  if (loading) {
+    return <LoadingSpinner fullScreen />;
+  }
 
   return (
     <div className="homepage">
@@ -54,26 +80,46 @@ function HomePage() {
       </section>
 
       {/* Categories Section */}
-      <section className="categories-section">
-        <h2 className="categories-title">Categorías</h2>
-        <div className="categories-grid">
-          {categories.map((category) => (
-            <Link
-              key={category.id}
-              to={category.path}
-              className="category-card"
-            >
-              <div className="category-icon-wrapper">
-                <span className="category-icon">{category.icon}</span>
-              </div>
-              <h3 className="category-name">{category.name}</h3>
-            </Link>
-          ))}
-        </div>
-      </section>
+      {categorias.length > 0 && (
+        <section className="categories-section">
+          <h2 className="categories-title">Categorías</h2>
+          <div className="categories-grid">
+            {categorias.map((categoria) => (
+              <Link
+                key={categoria.id}
+                to={`/catalogo?categoriaId=${categoria.id}`}
+                className="category-card"
+              >
+                <div className="category-icon-wrapper">
+                  <span className="category-icon">📦</span>
+                </div>
+                <h3 className="category-name">{categoria.nombre}</h3>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Featured Products Section */}
+      {productosDestacados.length > 0 && (
+        <section className="featured-section">
+          <h2 className="featured-title">Productos Destacados</h2>
+          <div className="featured-grid">
+            {productosDestacados.map((producto) => (
+              <ProductCard
+                key={producto.id}
+                producto={producto}
+                rating={producto.rating_promedio || 0}
+              />
+            ))}
+          </div>
+          <Link to="/catalogo" className="btn-view-all">
+            Ver Todos los Productos
+          </Link>
+        </section>
+      )}
     </div>
   );
 }
 
 export default HomePage;
-

@@ -1,21 +1,49 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useToast } from '../context/ToastContext';
 
 function Configuracion() {
-  const [settings, setSettings] = useState({
+  const DEFAULT_SETTINGS = {
     nombreTienda: 'MOWI Store',
     email: 'admin@mowi.com',
     telefono: '+51 123 456 789',
     direccion: 'Lima, Perú',
     moneda: 'S/',
     idioma: 'Español',
-    notificaciones: true
-  });
+    notificaciones: true,
+  };
+
+  const [settings, setSettings] = useState(DEFAULT_SETTINGS);
   const [errors, setErrors] = useState({});
   const toast = useToast();
 
+  const loadSavedSettings = useCallback(() => {
+    try {
+      const saved = localStorage.getItem('admin_config');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return {
+          ...DEFAULT_SETTINGS,
+          ...parsed,
+        };
+      }
+    } catch (error) {
+      console.error('Error cargando configuraciones guardadas:', error);
+    }
+    return DEFAULT_SETTINGS;
+  }, []);
+
+  // Cargar configuraciones guardadas (excepto nombre de la tienda)
+  useEffect(() => {
+    setSettings(loadSavedSettings());
+  }, [loadSavedSettings]);
+
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
+    // El nombre de la tienda es solo informativo, no se permite cambiarlo
+    if (name === 'nombreTienda') {
+      return;
+    }
+
     setSettings(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value
@@ -24,10 +52,6 @@ function Configuracion() {
 
   const validateSettings = () => {
     const newErrors = {};
-
-    if (!settings.nombreTienda || settings.nombreTienda.trim().length < 2) {
-      newErrors.nombreTienda = 'El nombre de la tienda debe tener al menos 2 caracteres';
-    }
 
     if (!settings.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(settings.email)) {
       newErrors.email = 'Debe ingresar un email válido';
@@ -50,58 +74,85 @@ function Configuracion() {
       toast.error('Por favor, corrija los errores en el formulario');
       return;
     }
-    
-    // Aquí se guardaría en el backend o localStorage
-    // Por ahora solo mostramos el toast
+
+    try {
+      // Guardar en localStorage todo excepto el nombre de la tienda
+      const { nombreTienda, ...rest } = settings;
+      localStorage.setItem('admin_config', JSON.stringify(rest));
+      // Sincronizar estado con lo realmente guardado
+      setSettings({
+        ...DEFAULT_SETTINGS,
+        ...rest,
+      });
+    } catch (error) {
+      console.error('Error guardando configuraciones:', error);
+      toast.error('No se pudieron guardar las configuraciones');
+      return;
+    }
+
     toast.success('Configuraciones guardadas exitosamente');
   };
 
   return (
     <main style={{
       marginLeft: '280px',
-      padding: '2rem',
-      backgroundColor: '#f7fafc'
+      padding: '2.5rem',
+      backgroundColor: '#f7fafc',
+      minHeight: '100vh',
+      boxSizing: 'border-box'
     }}>
-      {/* Header */}
-      <div style={{ marginBottom: '2rem' }}>
-        <h1 style={{
-          fontSize: '2rem',
-          fontWeight: '700',
-          color: '#2d3748',
-          marginBottom: '0.5rem'
-        }}>
-          Configuración
-        </h1>
-        <p style={{
-          fontSize: '1rem',
-          color: '#718096'
-        }}>
-          Administra las configuraciones del sistema
-        </p>
-      </div>
-
-      {/* General Settings */}
       <div style={{
-        background: 'white',
-        borderRadius: '12px',
-        padding: '1.5rem',
-        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
-        marginBottom: '1.5rem'
+        maxWidth: '1100px',
+        margin: '0 auto'
       }}>
+        {/* Header */}
+        <div style={{ marginBottom: '2rem' }}>
+          <h1 style={{
+            fontSize: '2.2rem',
+            fontWeight: '700',
+            color: '#2d3748',
+            marginBottom: '0.5rem'
+          }}>
+            Configuración
+          </h1>
+          <p style={{
+            fontSize: '1rem',
+            color: '#718096'
+          }}>
+            Administra las configuraciones del sistema
+          </p>
+        </div>
+
+        {/* Layout de tarjetas */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1.4fr)',
+          gap: '1.5rem',
+          alignItems: 'flex-start',
+          marginBottom: '2rem'
+        }}>
+          {/* General Settings */}
+          <div style={{
+            background: 'white',
+            borderRadius: '16px',
+            padding: '1.75rem',
+            boxShadow: '0 10px 30px rgba(15, 23, 42, 0.06)'
+          }}>
         <h3 style={{
           fontSize: '1.25rem',
           fontWeight: '600',
           color: '#2d3748',
-          marginBottom: '1.5rem'
+          marginBottom: '1.25rem'
         }}>
           Configuración General
         </h3>
         
         <div style={{
           display: 'grid',
-          gap: '1.5rem'
+          gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+          gap: '1.25rem 1.5rem'
         }}>
-          <div>
+          <div style={{ gridColumn: '1 / -1' }}>
             <label style={{
               display: 'block',
               fontSize: '0.875rem',
@@ -115,20 +166,18 @@ function Configuracion() {
               type="text"
               name="nombreTienda"
               value={settings.nombreTienda}
-              onChange={handleChange}
               style={{
                 width: '100%',
                 padding: '0.75rem 1rem',
-                border: errors.nombreTienda ? '1px solid #f56565' : '1px solid #e2e8f0',
+                border: '1px solid #e2e8f0',
                 borderRadius: '8px',
-                fontSize: '1rem'
+                fontSize: '1rem',
+                backgroundColor: '#edf2f7',
+                color: '#4a5568',
+                cursor: 'not-allowed'
               }}
+              disabled
             />
-            {errors.nombreTienda && (
-              <p style={{ fontSize: '0.875rem', color: '#f56565', marginTop: '0.25rem' }}>
-                {errors.nombreTienda}
-              </p>
-            )}
           </div>
 
           <div>
@@ -191,7 +240,7 @@ function Configuracion() {
             )}
           </div>
 
-          <div>
+          <div style={{ gridColumn: '1 / -1' }}>
             <label style={{
               display: 'block',
               fontSize: '0.875rem',
@@ -221,28 +270,27 @@ function Configuracion() {
             )}
           </div>
         </div>
-      </div>
+          </div>
 
-      {/* Preferences */}
-      <div style={{
-        background: 'white',
-        borderRadius: '12px',
-        padding: '1.5rem',
-        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
-        marginBottom: '1.5rem'
-      }}>
+          {/* Preferences */}
+          <div style={{
+            background: 'white',
+            borderRadius: '16px',
+            padding: '1.75rem',
+            boxShadow: '0 10px 30px rgba(15, 23, 42, 0.06)'
+          }}>
         <h3 style={{
           fontSize: '1.25rem',
           fontWeight: '600',
           color: '#2d3748',
-          marginBottom: '1.5rem'
+          marginBottom: '1.25rem'
         }}>
           Preferencias
         </h3>
         
         <div style={{
           display: 'grid',
-          gap: '1.5rem'
+          gap: '1.25rem'
         }}>
           <div>
             <label style={{
@@ -329,50 +377,44 @@ function Configuracion() {
             </label>
           </div>
         </div>
-      </div>
+          </div>
+        </div>
 
-      {/* Actions */}
-      <div style={{
-        display: 'flex',
-        gap: '1rem',
-        justifyContent: 'flex-end'
-      }}>
-        <button
-          onClick={() => setSettings({
-            nombreTienda: 'MOWI Store',
-            email: 'admin@mowi.com',
-            telefono: '+51 123 456 789',
-            direccion: 'Lima, Perú',
-            moneda: 'S/',
-            idioma: 'Español',
-            notificaciones: true
-          })}
-          style={{
-            padding: '0.75rem 1.5rem',
-            background: 'white',
-            color: '#4a5568',
-            border: '1px solid #e2e8f0',
-            borderRadius: '8px',
-            fontWeight: '600',
-            cursor: 'pointer'
-          }}
-        >
-          Cancelar
-        </button>
-        <button
-          onClick={handleSave}
-          style={{
-            padding: '0.75rem 1.5rem',
-            background: '#ff6b35',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            fontWeight: '600',
-            cursor: 'pointer'
-          }}
-        >
-          Guardar Cambios
-        </button>
+        {/* Actions */}
+        <div style={{
+          display: 'flex',
+          gap: '1rem',
+          justifyContent: 'flex-end'
+        }}>
+          <button
+            onClick={() => setSettings(loadSavedSettings())}
+            style={{
+              padding: '0.75rem 1.5rem',
+              background: 'white',
+              color: '#4a5568',
+              border: '1px solid #e2e8f0',
+              borderRadius: '8px',
+              fontWeight: '600',
+              cursor: 'pointer'
+            }}
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={handleSave}
+            style={{
+              padding: '0.75rem 1.5rem',
+              background: '#ff6b35',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              fontWeight: '600',
+              cursor: 'pointer'
+            }}
+          >
+            Guardar Cambios
+          </button>
+        </div>
       </div>
     </main>
   );

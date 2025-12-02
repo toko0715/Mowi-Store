@@ -118,8 +118,9 @@ export const api = {
     method: 'POST',
     body: JSON.stringify(data),
   }),
+  // Para actualizar solo algunos campos del pedido (por ejemplo, el estado)
   updatePedido: (id, data) => fetchAPI(`/pedidos/${id}/`, {
-    method: 'PUT',
+    method: 'PATCH',
     body: JSON.stringify(data),
   }),
   deletePedido: (id) => fetchAPI(`/pedidos/${id}/`, {

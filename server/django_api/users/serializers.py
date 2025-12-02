@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
+from .models import Direccion, Wishlist
 
 User = get_user_model()
 
@@ -53,3 +54,33 @@ class LoginSerializer(serializers.Serializer):
             return data
         else:
             raise serializers.ValidationError('Debe proporcionar email y contraseña')
+
+
+class DireccionSerializer(serializers.ModelSerializer):
+    """Serializer para el modelo de Dirección"""
+
+    class Meta:
+        model = Direccion
+        fields = ['id', 'usuario', 'nombre_completo', 'telefono', 'direccion', 
+                  'ciudad', 'departamento', 'codigo_postal', 'referencia', 
+                  'es_principal', 'fecha_creacion', 'fecha_actualizacion']
+        read_only_fields = ['id', 'usuario', 'fecha_creacion', 'fecha_actualizacion']
+
+    def create(self, validated_data):
+        """Crear dirección asociada al usuario autenticado"""
+        validated_data['usuario'] = self.context['request'].user
+        return super().create(validated_data)
+
+
+class WishlistSerializer(serializers.ModelSerializer):
+    """Serializer para el modelo de Wishlist"""
+
+    class Meta:
+        model = Wishlist
+        fields = ['id', 'usuario', 'producto_id', 'fecha_agregado']
+        read_only_fields = ['id', 'usuario', 'fecha_agregado']
+
+    def create(self, validated_data):
+        """Crear item de wishlist asociado al usuario autenticado"""
+        validated_data['usuario'] = self.context['request'].user
+        return super().create(validated_data)

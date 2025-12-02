@@ -27,6 +27,9 @@ public class Resena {
     @Column(name = "fecha_creacion", nullable = false, updatable = false)
     private LocalDateTime fechaCreacion = LocalDateTime.now();
 
+    @Column(name = "fecha_actualizacion", nullable = false)
+    private LocalDateTime fechaActualizacion = LocalDateTime.now();
+
     public Resena() {}
 
     public Resena(Long usuarioId, Producto producto, Integer calificacion, String comentario) {
@@ -34,6 +37,19 @@ public class Resena {
         this.producto = producto;
         this.calificacion = calificacion;
         this.comentario = comentario;
+    }
+
+    @PrePersist
+    public void prePersist() {
+        if (fechaCreacion == null) {
+            fechaCreacion = LocalDateTime.now();
+        }
+        fechaActualizacion = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    public void preUpdate() {
+        fechaActualizacion = LocalDateTime.now();
     }
 
     // Getters y Setters
@@ -54,4 +70,7 @@ public class Resena {
 
     public LocalDateTime getFechaCreacion() { return fechaCreacion; }
     public void setFechaCreacion(LocalDateTime fechaCreacion) { this.fechaCreacion = fechaCreacion; }
+
+    public LocalDateTime getFechaActualizacion() { return fechaActualizacion; }
+    public void setFechaActualizacion(LocalDateTime fechaActualizacion) { this.fechaActualizacion = fechaActualizacion; }
 }

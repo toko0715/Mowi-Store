@@ -1,15 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import './App.css';
+import { AppProvider, useApp } from './context/AppContext';
 import AuthModal from './components/AuthModal';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import HomePage from './components/HomePage';
 import CatalogPage from './pages/CatalogPage';
+import ProductDetailPage from './pages/ProductDetailPage';
+import CartPage from './pages/CartPage';
+import CheckoutPage from './pages/CheckoutPage';
+import MyOrdersPage from './pages/MyOrdersPage';
+import OrderDetailPage from './pages/OrderDetailPage';
+import SupportPage from './pages/SupportPage';
+import ProfileDashboard from './pages/ProfileDashboard';
 
-function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState(null);
+function AppContent() {
+  const { user, isAuthenticated, setAuthenticatedUser, clearAuth } = useApp();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [initialTab, setInitialTab] = useState('login');
 
@@ -22,40 +29,10 @@ function App() {
     if (isLogout === 'true') {
       // Forzar logout y limpiar URL
       console.log('Logout detectado desde AdminPanel');
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('refresh_token');
-      localStorage.removeItem('user');
-      setIsAuthenticated(false);
-      setUser(null);
-
-      // Limpiar el parámetro de la URL sin recargar
+      clearAuth();
       window.history.replaceState({}, '', '/');
-      return;
     }
-
-    // Verificar autenticación normal
-    const token = localStorage.getItem('access_token');
-    const userData = localStorage.getItem('user');
-
-    if (token && userData) {
-      try {
-        const parsedUser = JSON.parse(userData);
-        setUser(parsedUser);
-        setIsAuthenticated(true);
-      } catch (error) {
-        console.error('Error parsing user data:', error);
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('refresh_token');
-        localStorage.removeItem('user');
-        setIsAuthenticated(false);
-        setUser(null);
-      }
-    } else {
-      // No hay sesión activa
-      setIsAuthenticated(false);
-      setUser(null);
-    }
-  }, []);
+  }, [clearAuth]);
 
   const openModal = (tab) => {
     setInitialTab(tab);
@@ -63,17 +40,12 @@ function App() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
-    localStorage.removeItem('user');
-    setIsAuthenticated(false);
-    setUser(null);
+    clearAuth();
   };
 
   const handleLoginSuccess = (userData) => {
     console.log('✅ Login exitoso. Datos del usuario:', userData);
-    setUser(userData);
-    setIsAuthenticated(true);
+    setAuthenticatedUser(userData);
     setIsModalOpen(false);
 
     // Redirigir según el rol
@@ -106,8 +78,6 @@ function App() {
     <Router>
       <div className="App">
         <Header
-          isAuthenticated={isAuthenticated}
-          user={user}
           onLogout={handleLogout}
           onLoginClick={() => openModal('login')}
         />
@@ -116,18 +86,13 @@ function App() {
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/catalogo" element={<CatalogPage />} />
-            <Route path="/soporte" element={
-              <div style={{ padding: '100px 60px', textAlign: 'center', minHeight: '60vh' }}>
-                <h1 style={{ fontSize: '42px', marginBottom: '20px' }}>Soporte</h1>
-                <p style={{ fontSize: '18px', color: '#666' }}>Página de soporte en construcción</p>
-              </div>
-            } />
-            <Route path="/carrito" element={
-              <div style={{ padding: '100px 60px', textAlign: 'center', minHeight: '60vh' }}>
-                <h1 style={{ fontSize: '42px', marginBottom: '20px' }}>Carrito de Compras</h1>
-                <p style={{ fontSize: '18px', color: '#666' }}>Tu carrito está vacío</p>
-              </div>
-            } />
+            <Route path="/producto/:id" element={<ProductDetailPage />} />
+            <Route path="/carrito" element={<CartPage />} />
+            <Route path="/checkout" element={<CheckoutPage />} />
+            <Route path="/mis-pedidos" element={<MyOrdersPage />} />
+            <Route path="/pedido/:id" element={<OrderDetailPage />} />
+            <Route path="/mi-perfil" element={<ProfileDashboard />} />
+            <Route path="/soporte" element={<SupportPage />} />
           </Routes>
         </main>
 
@@ -142,6 +107,14 @@ function App() {
         />
       </div>
     </Router>
+  );
+}
+
+function App() {
+  return (
+    <AppProvider>
+      <AppContent />
+    </AppProvider>
   );
 }
 

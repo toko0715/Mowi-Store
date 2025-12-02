@@ -1,10 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Login from './Login';
 import RegisterForm from './RegisterForm';
 import './AuthModal.css';
 
 function AuthModal({ isOpen, onClose, initialTab = 'login', onLoginSuccess }) {
   const [activeTab, setActiveTab] = useState(initialTab);
+
+  // Sincronizar la pestaña activa cuando cambie initialTab al abrir desde distintos lugares
+  useEffect(() => {
+    setActiveTab(initialTab);
+  }, [initialTab]);
 
   if (!isOpen) return null;
 

@@ -1,85 +1,238 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { productosAPI, categoriasAPI, resenasAPI, busquedaAPI } from '../services/api';
+import LoadingSpinner from '../components/LoadingSpinner';
+import ErrorMessage from '../components/ErrorMessage';
+import ProductCard from '../components/ProductCard';
 import './CatalogPage.css';
 
+// Lista de marcas comunes para extraer de nombres de productos
+const MARCAS_COMUNES = [
+  'Apple', 'Samsung', 'Nike', 'Adidas', 'Sony', 'ASUS', 'IKEA', 
+  'PetSafe', 'West Elm', 'LG', 'HP', 'Dell', 'Lenovo', 'Microsoft',
+  'Canon', 'Nikon', 'Bose', 'JBL', 'Philips', 'Panasonic'
+];
+
+// Función para extraer marca del nombre del producto
+const extraerMarca = (nombreProducto) => {
+  if (!nombreProducto) return null;
+  const nombreUpper = nombreProducto.toUpperCase();
+  for (const marca of MARCAS_COMUNES) {
+    if (nombreUpper.includes(marca.toUpperCase())) {
+      return marca;
+    }
+  }
+  return null;
+};
+
 function CatalogPage() {
-  const [selectedCategory, setSelectedCategory] = useState('Todas las categorías');
+  const [searchParams] = useSearchParams();
+  const [productos, setProductos] = useState([]);
+  const [productosOriginales, setProductosOriginales] = useState([]);
+  const [categorias, setCategorias] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [selectedCategory, setSelectedCategory] = useState('');
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
+  const [minRating, setMinRating] = useState('');
   const [selectedBrands, setSelectedBrands] = useState([]);
-  const [minRating, setMinRating] = useState('Todas las valoraciones');
   const [sortBy, setSortBy] = useState('Relevancia');
+  const [productosConRating, setProductosConRating] = useState({});
+  const busquedaQuery = searchParams.get('busqueda');
 
-  const brands = ['Apple', 'Samsung', 'Nike', 'Adidas', 'Sony', 'ASUS', 'IKEA', 'PetSafe', 'West Elm'];
+  // Extraer marcas únicas de los productos
+  const marcasDisponibles = useMemo(() => {
+    const marcasSet = new Set();
+    productosOriginales.forEach(producto => {
+      const marca = extraerMarca(producto.nombre);
+      if (marca) {
+        marcasSet.add(marca);
+      }
+    });
+    return Array.from(marcasSet).sort();
+  }, [productosOriginales]);
 
-  const handleBrandToggle = (brand) => {
-    setSelectedBrands(prev =>
-      prev.includes(brand)
-        ? prev.filter(b => b !== brand)
-        : [...prev, brand]
-    );
+  const cargarCategorias = useCallback(async () => {
+    try {
+      const response = await categoriasAPI.listar();
+      setCategorias(response.data);
+    } catch (error) {
+      console.error('Error al cargar categorías:', error);
+    }
+  }, []);
+
+  const cargarRatingsProductos = useCallback(async (productosData) => {
+    try {
+      const ratingsPromises = productosData.map(async (producto) => {
+        try {
+          const resenasResponse = await resenasAPI.obtenerPorProducto(producto.id);
+          const resenas = resenasResponse.data;
+          
+          if (resenas.length === 0) {
+            return { productoId: producto.id, rating: 0, count: 0 };
+          }
+          
+          const suma = resenas.reduce((acc, r) => acc + (r.calificacion || 0), 0);
+          const promedio = suma / resenas.length;
+          
+          return { productoId: producto.id, rating: promedio, count: resenas.length };
+        } catch (error) {
+          return { productoId: producto.id, rating: 0, count: 0 };
+        }
+      });
+
+      const ratings = await Promise.all(ratingsPromises);
+      const ratingsMap = {};
+      ratings.forEach(r => {
+        ratingsMap[r.productoId] = r.rating;
+      });
+      setProductosConRating(ratingsMap);
+    } catch (error) {
+      console.error('Error al cargar ratings:', error);
+    }
+  }, []);
+
+  const cargarProductos = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      let productosData;
+      if (busquedaQuery) {
+        try {
+          const aiResp = await busquedaAPI.buscarConGemini(busquedaQuery);
+          const aiData = aiResp.data;
+          if (aiData?.resultados?.length > 0) {
+            productosData = aiData.resultados;
+          } else {
+            const fallbackResp = await productosAPI.buscar(busquedaQuery);
+            productosData = fallbackResp.data;
+          }
+        } catch (e) {
+          const fallbackResp = await productosAPI.buscar(busquedaQuery);
+          productosData = fallbackResp.data;
+        }
+      } else if (selectedCategory) {
+        const catResp = await productosAPI.porCategoria(selectedCategory);
+        productosData = catResp.data;
+      } else {
+        const listResp = await productosAPI.listar();
+        productosData = listResp.data;
+      }
+      
+      // Filtrar solo productos activos
+      productosData = productosData.filter(p => p.activo !== false);
+      
+      setProductosOriginales(productosData);
+      
+      // Cargar ratings de productos
+      await cargarRatingsProductos(productosData);
+    } catch (error) {
+      console.error('Error al cargar productos:', error);
+      setError('Error al cargar los productos. Por favor, intenta nuevamente.');
+    } finally {
+      setLoading(false);
+    }
+  }, [busquedaQuery, selectedCategory, cargarRatingsProductos]);
+
+  const ordenarProductos = useCallback((productos, orden) => {
+    const productosOrdenados = [...productos];
+    switch (orden) {
+      case 'Precio: Menor a Mayor':
+        return productosOrdenados.sort((a, b) => 
+          parseFloat(a.precio) - parseFloat(b.precio)
+        );
+      case 'Precio: Mayor a Menor':
+        return productosOrdenados.sort((a, b) => 
+          parseFloat(b.precio) - parseFloat(a.precio)
+        );
+      case 'Mejor Valorados':
+        return productosOrdenados.sort((a, b) => {
+          const ratingA = productosConRating[a.id] || 0;
+          const ratingB = productosConRating[b.id] || 0;
+          return ratingB - ratingA;
+        });
+      default:
+        return productosOrdenados;
+    }
+  }, [productosConRating]);
+
+  const aplicarFiltros = useCallback(() => {
+    let productosFiltrados = [...productosOriginales];
+
+    // Filtro por precio mínimo
+    if (minPrice && minPrice !== '') {
+      productosFiltrados = productosFiltrados.filter(p => 
+        parseFloat(p.precio) >= parseFloat(minPrice)
+      );
+    }
+
+    // Filtro por precio máximo
+    if (maxPrice && maxPrice !== '') {
+      productosFiltrados = productosFiltrados.filter(p => 
+        parseFloat(p.precio) <= parseFloat(maxPrice)
+      );
+    }
+
+    // Filtro por valoración mínima
+    if (minRating && minRating !== '') {
+      const ratingMin = parseFloat(minRating);
+      productosFiltrados = productosFiltrados.filter(p => {
+        const rating = productosConRating[p.id] || 0;
+        return rating >= ratingMin;
+      });
+    }
+
+    // Filtro por marca
+    if (selectedBrands.length > 0) {
+      productosFiltrados = productosFiltrados.filter(p => {
+        const marca = extraerMarca(p.nombre);
+        return marca && selectedBrands.includes(marca);
+      });
+    }
+
+    // Ordenar productos
+    productosFiltrados = ordenarProductos(productosFiltrados, sortBy);
+
+    setProductos(productosFiltrados);
+  }, [productosOriginales, minPrice, maxPrice, minRating, selectedBrands, sortBy, productosConRating, ordenarProductos]);
+
+  useEffect(() => {
+    cargarCategorias();
+  }, [cargarCategorias]);
+
+  useEffect(() => {
+    cargarProductos();
+  }, [cargarProductos]);
+
+  useEffect(() => {
+    aplicarFiltros();
+  }, [aplicarFiltros]);
+
+  const handleCategoryChange = (e) => {
+    setSelectedCategory(e.target.value);
   };
 
-  // Datos de ejemplo para los productos
-  const products = [
-    {
-      id: 1,
-      name: 'iPhone 15 Pro Max',
-      rating: 4.8,
-      price: '4299.99',
-      image: 'https://via.placeholder.com/300x300?text=iPhone+15+Pro+Max'
-    },
-    {
-      id: 2,
-      name: 'Laptop ASUS ROG',
-      rating: 4.6,
-      price: '2899.99',
-      image: 'https://via.placeholder.com/300x300?text=Laptop+ASUS+ROG'
-    },
-    {
-      id: 3,
-      name: 'Chaqueta Nike Deportiva',
-      rating: 4.5,
-      price: '299.99',
-      image: 'https://via.placeholder.com/300x300?text=Chaqueta+Nike'
-    },
-    {
-      id: 4,
-      name: 'Sofá IKEA Moderno',
-      rating: 4.7,
-      price: '1299.99',
-      image: 'https://via.placeholder.com/300x300?text=Sofa+IKEA'
-    },
-    {
-      id: 5,
-      name: 'Samsung Galaxy S24',
-      rating: 4.9,
-      price: '3599.99',
-      image: 'https://via.placeholder.com/300x300?text=Samsung+Galaxy'
-    },
-    {
-      id: 6,
-      name: 'Zapatillas Adidas',
-      rating: 4.4,
-      price: '199.99',
-      image: 'https://via.placeholder.com/300x300?text=Zapatillas+Adidas'
-    },
-    {
-      id: 7,
-      name: 'PlayStation 5',
-      rating: 4.8,
-      price: '2499.99',
-      image: 'https://via.placeholder.com/300x300?text=PlayStation+5'
-    },
-    {
-      id: 8,
-      name: 'Monitor ASUS Gaming',
-      rating: 4.6,
-      price: '899.99',
-      image: 'https://via.placeholder.com/300x300?text=Monitor+ASUS'
-    }
-  ];
+  const handleSortChange = (e) => {
+    setSortBy(e.target.value);
+  };
+
+  const handleRatingFilterChange = (e) => {
+    setMinRating(e.target.value);
+  };
+
+  const handleBrandToggle = (marca) => {
+    setSelectedBrands(prev => {
+      if (prev.includes(marca)) {
+        return prev.filter(b => b !== marca);
+      } else {
+        return [...prev, marca];
+      }
+    });
+  };
 
   const renderStars = (rating) => {
+    if (!rating || rating === 0) return null;
     const fullStars = Math.floor(rating);
     const hasHalfStar = rating % 1 >= 0.5;
     const stars = [];
@@ -98,19 +251,38 @@ function CatalogPage() {
     return stars;
   };
 
+  const getProductRating = (productoId) => {
+    return productosConRating[productoId] || 0;
+  };
+
+  const limpiarFiltros = () => {
+    setMinPrice('');
+    setMaxPrice('');
+    setMinRating('');
+    setSelectedBrands([]);
+  };
+
+  const tieneFiltrosActivos = minPrice || maxPrice || minRating || selectedBrands.length > 0;
+
+  if (loading) {
+    return <LoadingSpinner fullScreen />;
+  }
+
   return (
     <div className="catalog-page">
       <div className="catalog-header">
-        <h1 className="catalog-title">Catálogo de Productos</h1>
+        <h1 className="catalog-title">
+          {busquedaQuery ? `Resultados de búsqueda: "${busquedaQuery}"` : 'Catálogo de Productos'}
+        </h1>
         <div className="catalog-info">
-          <span className="product-count">{products.length} productos disponibles</span>
+          <span className="product-count">{productos.length} productos disponibles</span>
           <div className="sort-container">
             <label htmlFor="sort-select">Ordenar por: </label>
             <select
               id="sort-select"
               className="sort-select"
               value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
+              onChange={handleSortChange}
             >
               <option value="Relevancia">Relevancia</option>
               <option value="Precio: Menor a Mayor">Precio: Menor a Mayor</option>
@@ -120,6 +292,8 @@ function CatalogPage() {
           </div>
         </div>
       </div>
+
+      {error && <ErrorMessage message={error} onClose={() => setError(null)} />}
 
       <div className="catalog-content">
         {/* Sidebar de Filtros */}
@@ -134,15 +308,14 @@ function CatalogPage() {
             <select
               className="filter-select"
               value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
+              onChange={handleCategoryChange}
             >
-              <option>Todas las categorías</option>
-              <option>Tecnología</option>
-              <option>Moda</option>
-              <option>Hogar</option>
-              <option>Mascotas</option>
-              <option>Bebés</option>
-              <option>Juguetes</option>
+              <option value="">Todas las categorías</option>
+              {categorias.map((categoria) => (
+                <option key={categoria.id} value={categoria.id}>
+                  {categoria.nombre}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -151,69 +324,86 @@ function CatalogPage() {
             <div className="price-inputs">
               <input
                 type="number"
-                placeholder="Precio mínimo"
+                placeholder="mínimo"
                 className="price-input"
                 value={minPrice}
                 onChange={(e) => setMinPrice(e.target.value)}
+                min="0"
+                step="0.01"
               />
               <input
                 type="number"
-                placeholder="Precio máximo"
+                placeholder="máximo"
                 className="price-input"
                 value={maxPrice}
                 onChange={(e) => setMaxPrice(e.target.value)}
+                min="0"
+                step="0.01"
               />
             </div>
           </div>
 
-          <div className="filter-section">
-            <label className="filter-label">Marca</label>
-            <div className="brands-list">
-              {brands.map((brand) => (
-                <label key={brand} className="brand-checkbox">
-                  <input
-                    type="checkbox"
-                    checked={selectedBrands.includes(brand)}
-                    onChange={() => handleBrandToggle(brand)}
-                  />
-                  <span>{brand}</span>
-                </label>
-              ))}
+          {marcasDisponibles.length > 0 && (
+            <div className="filter-section">
+              <label className="filter-label">Marca</label>
+              <div className="brands-list">
+                {marcasDisponibles.map((marca) => (
+                  <label key={marca} className="brand-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={selectedBrands.includes(marca)}
+                      onChange={() => handleBrandToggle(marca)}
+                    />
+                    <span>{marca}</span>
+                  </label>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="filter-section">
             <label className="filter-label">Valoración Mínima</label>
             <select
               className="filter-select"
               value={minRating}
-              onChange={(e) => setMinRating(e.target.value)}
+              onChange={handleRatingFilterChange}
             >
-              <option>Todas las valoraciones</option>
-              <option>4 estrellas o más</option>
-              <option>4.5 estrellas o más</option>
+              <option value="">Todas las valoraciones</option>
+              <option value="4">4 estrellas o más</option>
+              <option value="4.5">4.5 estrellas o más</option>
             </select>
           </div>
+
+          {tieneFiltrosActivos && (
+            <div className="filter-section">
+              <button
+                className="btn-clear-filters"
+                onClick={limpiarFiltros}
+              >
+                Limpiar Filtros
+              </button>
+            </div>
+          )}
         </aside>
 
         {/* Grid de Productos */}
         <main className="products-grid">
-          {products.map((product) => (
-            <div key={product.id} className="product-card">
-              <div className="product-image">
-                <img src={product.image} alt={product.name} />
-              </div>
-              <h3 className="product-name">{product.name}</h3>
-              <div className="product-rating">
-                {renderStars(product.rating)}
-                <span className="rating-value">{product.rating}</span>
-              </div>
-              <div className="product-price">S/ {product.price}</div>
-              <button className="add-to-cart-btn">
-                🛒 Agregar al carrito
-              </button>
+          {productos.length === 0 ? (
+            <div className="no-products">
+              <p>No se encontraron productos con los filtros seleccionados.</p>
             </div>
-          ))}
+          ) : (
+            productos.map((producto) => {
+              const rating = getProductRating(producto.id);
+              return (
+                <ProductCard
+                  key={producto.id}
+                  producto={producto}
+                  rating={rating}
+                />
+              );
+            })
+          )}
         </main>
       </div>
     </div>
@@ -221,4 +411,3 @@ function CatalogPage() {
 }
 
 export default CatalogPage;
-

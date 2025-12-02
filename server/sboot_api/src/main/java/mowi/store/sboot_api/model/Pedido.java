@@ -18,6 +18,12 @@ public class Pedido {
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal total;
 
+    @Column(precision = 10, scale = 2)
+    private BigDecimal descuento = BigDecimal.ZERO;
+
+    @Column(name = "codigo_cupon", length = 50)
+    private String codigoCupon;
+
     @Column(length = 50)
     private String estado = "PENDIENTE";
 
@@ -48,6 +54,12 @@ public class Pedido {
 
     public BigDecimal getTotal() { return total; }
     public void setTotal(BigDecimal total) { this.total = total; }
+
+    public BigDecimal getDescuento() { return descuento; }
+    public void setDescuento(BigDecimal descuento) { this.descuento = descuento; }
+
+    public String getCodigoCupon() { return codigoCupon; }
+    public void setCodigoCupon(String codigoCupon) { this.codigoCupon = codigoCupon; }
 
     public String getEstado() { return estado; }
     public void setEstado(String estado) { this.estado = estado; }

@@ -59,13 +59,28 @@
   transform: scale(1.02);
 }
 
-.search-icon {
+.search-icon-btn {
   position: absolute;
-  right: 15px;
+  right: 5px;
   top: 50%;
   transform: translateY(-50%);
-  font-size: 18px;
+  background: none;
+  border: none;
   cursor: pointer;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background-color 0.2s;
+}
+
+.search-icon-btn:hover {
+  background-color: rgba(255, 140, 0, 0.1);
+}
+
+.search-icon {
+  font-size: 18px;
 }
 
 .header-nav {
@@ -86,9 +101,30 @@
   color: #FF8C00;
 }
 
+.nav-link.active {
+  color: #FF8C00;
+  position: relative;
+}
+
+.nav-link.active::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -4px;
+  width: 100%;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #FF8C00 0%, #FF6B35 100%);
+}
+
+.cart-icon-container {
+  position: relative;
+  text-decoration: none;
+  display: inline-block;
+}
+
 .cart-icon {
   font-size: 24px;
-  text-decoration: none;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   position: relative;
@@ -97,13 +133,30 @@
   border-radius: 50%;
 }
 
-.cart-icon:hover {
+.cart-icon-container:hover .cart-icon {
   transform: scale(1.15) rotate(5deg);
   background: rgba(255, 140, 0, 0.1);
 }
 
-.cart-icon:active {
+.cart-icon-container:active .cart-icon {
   transform: scale(1.05);
+}
+
+.cart-badge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: #e74c3c;
+  color: white;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: bold;
+  border: 2px solid white;
 }
 
 .user-menu {

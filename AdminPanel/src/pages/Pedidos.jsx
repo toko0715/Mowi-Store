@@ -157,13 +157,7 @@ function Pedidos() {
   // Actualizar estado de pedido (optimizado)
   const handleUpdateEstado = useCallback(async (pedidoId, nuevoEstado) => {
     try {
-      const pedido = pedidos.find(p => p.id === pedidoId);
-      if (!pedido) return;
-      
-      await api.updatePedido(pedidoId, {
-        ...pedido,
-        estado: nuevoEstado
-      });
+      await api.updatePedido(pedidoId, { estado: nuevoEstado });
       
       toast.success(`Estado actualizado a: ${nuevoEstado}`);
       fetchData();
