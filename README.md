@@ -63,14 +63,13 @@ Mowi-Store busca proporcionar una solución de e‑commerce adaptable para super
 
 **Diagrama lógico simplificado:**
 
-Clientes / Administradores
-↓
-Frontends React
-(AdminPanel / client)
-↓
-Django API ←→ Spring Boot API
-↓
-MySQL
+Cliente Web / Admin / App móvil
+        ↓
+    Frontends React
+        ↓
+Django API  ⇄  Spring Boot API
+        ↓
+          MySQL
 
 ---
 
@@ -87,7 +86,7 @@ Antes de iniciar, asegúrate de contar con:
   - Claves de Stripe.
   - Claves de Google Cloud / Gemini.
 
-> Recomendación: no incluir credenciales sensibles directamente en el README ni en el código fuente; usar siempre variables de entorno o gestores de secretos.
+
 
 ---
 
@@ -109,18 +108,24 @@ Servicio que alimenta principalmente al Admin Panel.
 cd server/django_api
 
 1. (Opcional) Crear entorno virtual
-python -m venv venv
 
-Windows: venv\Scripts\activate
-Linux/Mac: source venv/bin/activate
+    python -m venv venv
+
+    Windows: venv\Scripts\activate
+
+    Linux/Mac: source venv/bin/activate
+
 2. Instalar dependencias
-pip install -r requirements.txt
+
+   pip install -r requirements.txt
 
 3. Migraciones a la BD
-python manage.py migrate
+
+   python manage.py migrate
 
 4. Iniciar servidor (http://localhost:8000)
-python manage.py runserver
+
+   python manage.py runserver
 
 ---
 
@@ -131,9 +136,11 @@ Servicio orientado a búsqueda inteligente y transacciones de pago.
 cd server/sboot_api
 
 Ejecutar con Maven Wrapper (puerto por defecto 8080)
+
 ./mvnw spring-boot:run
 
 En Windows CMD:
+
 mvnw.cmd spring-boot:run
 
 Configurar en `application.properties` / `application.yml` o variables de entorno:
@@ -151,9 +158,11 @@ Panel de control para administradores.
 cd AdminPanel
 
 1. Instalar dependencias
+
 npm install
 
 2. Iniciar en modo desarrollo
+
 npm run dev
 
 Por defecto, el Admin Panel se conecta a `http://localhost:8000` (Django API) mediante proxy y CORS.
@@ -234,6 +243,4 @@ La app cliente consumirá las APIs de Django y Spring Boot según las URLs confi
 - Extender el módulo de IA con recomendaciones personalizadas.  
 - Añadir notificaciones push (web y móvil).  
 - Automatizar CI/CD con pipelines (por ejemplo, GitHub Actions).
-
-
 
