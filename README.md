@@ -63,13 +63,7 @@ Mowi-Store busca proporcionar una solución de e‑commerce adaptable para super
 
 **Diagrama lógico simplificado:**
 
-Cliente Web / Admin / App móvil
-        ↓
-    Frontends React
-        ↓
-Django API  ⇄  Spring Boot API
-        ↓
-          MySQL
+<img width="210" height="139" alt="image" src="https://github.com/user-attachments/assets/51b3b776-aedd-4749-bb86-dc8f5ecacb92" />
 
 ---
 
