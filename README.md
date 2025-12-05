@@ -196,32 +196,6 @@ La app cliente consumirá las APIs de Django y Spring Boot según las URLs confi
 
 ---
 
-## 🧪 Testing
-
-**Frontend**
-
-- Pruebas unitarias y de componentes con Jest y React Testing Library (según configuración de cada frontend).
-
-**Backend Django**
-
-- Pruebas de vistas, serializadores y modelos mediante el framework de tests de Django.
-
-**Backend Spring Boot**
-
-- Pruebas unitarias con JUnit y pruebas de integración con el soporte de Spring Test.
-
-> Cuando las suites de pruebas estén consolidadas, se pueden enlazar carpetas como `tests/`, `__tests__/` o `src/test/java`.
-
----
-
-## 🚢 Despliegue (Sugerido)
-
-- Contenerizar los módulos con Docker / Docker Compose (MySQL, Django API, Spring Boot API, AdminPanel, client).  
-- Exponer los backends detrás de un reverse proxy (Nginx / Traefik) con HTTPS.  
-- Gestionar la configuración sensible exclusivamente mediante variables de entorno.  
-
----
-
 ## 👥 Equipo
 
 - Backend / IA: Jheremy Strong Delgado  
